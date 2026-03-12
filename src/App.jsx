@@ -1,4 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+// Supabase Initialization
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = (supabaseUrl && supabaseAnonKey && supabaseUrl !== 'YOUR_SUPABASE_URL') 
+  ? createClient(supabaseUrl, supabaseAnonKey) 
+  : null;
 
 /* ============================================================
    INLINE SVG ICONS
@@ -439,6 +447,20 @@ const CameraScreen = ({ onBack }) => {
     </div>
   );
 };
+
+/* ============================================================
+   LOADING OVERLAY
+   ============================================================ */
+const LoadingOverlay = () => (
+  <div style={{
+    position: 'absolute', inset: 0, background: 'rgba(6,10,16,0.8)',
+    backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+  }}>
+    <div className="nav-dot" style={{ width: '40px', height: '40px', background: 'var(--accent)', boxShadow: '0 0 20px var(--accent)', borderRadius: '50%', animation: 'pulse 1.5s infinite alternate' }} />
+    <div className="mono" style={{ marginTop: '1.5rem', color: 'var(--accent)', fontSize: '0.8rem', letterSpacing: '0.2em' }}>SYNCHRONIZING...</div>
+  </div>
+);
 
 /* ============================================================
    CREATE FIX FORM
@@ -912,21 +934,107 @@ const BrowseScreen = ({ onBack, onSelectFix, fixes }) => {
    ============================================================ */
 export default function App() {
   const [screen, setScreen]         = useState('home');
-  const [fixes, setFixes]           = useState(INITIAL_FIXES);
+  const [fixes, setFixes]           = useState(INITIAL_FIXES); // Fallback to initial fixes if Supabase not ready
+  const [loading, setLoading]       = useState(false);
   const [selectedFix, setSelectedFix] = useState(null);
   const [showCreate, setShowCreate]  = useState(false);
   const nextId = useRef(INITIAL_FIXES.length + 1);
 
   const navigate = useCallback((s) => setScreen(s), []);
 
-  const handleAddFix = useCallback((fixData) => {
-    const newFix = {
-      ...fixData,
-      id: nextId.current++,
-    };
-    setFixes((prev) => [newFix, ...prev]);
-    setShowCreate(false);
+  // Fetch fixes on mount
+  const fetchFixes = useCallback(async () => {
+    if (!supabase) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('fixes')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setFixes(data);
+      }
+    } catch (err) {
+      console.error('Error fetching fixes:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchFixes();
+  }, [fetchFixes]);
+
+  // Helper: Convert DataURL to Blob for Supabase Storage
+  const dataURLtoBlob = (dataurl) => {
+    const arr = dataurl.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  };
+
+  const handleAddFix = useCallback(async (fixData) => {
+    setLoading(true);
+    try {
+      let screenshotUrls = [];
+
+      // 1. Upload screenshots to Supabase Storage if available
+      if (supabase && fixData.screenshots && fixData.screenshots.length > 0) {
+        for (let i = 0; i < fixData.screenshots.length; i++) {
+          const blob = dataURLtoBlob(fixData.screenshots[i]);
+          const fileName = `${Date.now()}_${i}.png`;
+          const { data: storageData, error: storageError } = await supabase.storage
+            .from('screenshots')
+            .upload(fileName, blob);
+          
+          if (storageError) throw storageError;
+          
+          const { data: publicUrlData } = supabase.storage
+            .from('screenshots')
+            .getPublicUrl(fileName);
+          
+          screenshotUrls.push(publicUrlData.publicUrl);
+        }
+      } else {
+        // Fallback to dataURLs if Supabase not available (local only)
+        screenshotUrls = fixData.screenshots || [];
+      }
+
+      const newFix = {
+        title: fixData.title,
+        category: fixData.category,
+        tags: fixData.tags,
+        summary: fixData.summary,
+        steps: fixData.steps,
+        screenshots: screenshotUrls,
+        updated_ago: 'just now',
+      };
+
+      if (supabase) {
+        // 2. Save to Supabase Table
+        const { error } = await supabase.from('fixes').insert([newFix]);
+        if (error) throw error;
+        await fetchFixes();
+      } else {
+        // 3. Fallback to local state if Supabase not configured
+        setFixes((prev) => [{ ...newFix, id: nextId.current++ }, ...prev]);
+      }
+
+      setShowCreate(false);
+    } catch (err) {
+      console.error('Error adding fix:', err);
+      alert('Failed to save fix. Please check console for details.');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchFixes]);
 
   return (
     <div className="app-shell">
@@ -962,6 +1070,9 @@ export default function App() {
 
       {/* Create Fix overlay */}
       {showCreate && <CreateFixForm onClose={() => setShowCreate(false)} onSave={handleAddFix} />}
+
+      {/* Loading Overlay */}
+      {loading && <LoadingOverlay />}
     </div>
   );
 }
