@@ -1,147 +1,52 @@
 # PocketKB
-Mobile-first knowledge base for IT troubleshooting and personal reference.
 
-# PocketKB
+A pocket-sized IT knowledge base for field technicians and help desk staff. Built as a mobile-first progressive web app with React + Vite.
 
-PocketKB is a **mobile-first knowledge base designed for IT troubleshooting and personal reference**.
+## Quick Start
 
-The goal of PocketKB is to provide a **fast, organized, and searchable place to store solutions, procedures, and useful information**, reducing the cognitive load when solving technical problems.
+```bash
+npm install
+npm run dev
+```
 
-PocketKB combines the simplicity of quick note apps with the structure of a troubleshooting knowledge base.
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
----
+## Features
 
-## Purpose
+- **Search** — Real-time filtering across fix titles, summaries, and tags
+- **Browse** — 9 categories with color-coded grid navigation
+- **Camera** — Full-screen viewfinder for error screen capture (future OCR)
+- **Detail View** — Step-by-step resolution checklists with toggleable completion
+- **Dark Theme** — Navy/black backgrounds with cyan accent glow
+- **Responsive** — Mobile-first design, adapts to tablet and desktop
 
-Many IT professionals store solutions across multiple tools:
+## Tech Stack
 
-* Sticky notes
-* Google Keep
-* OneNote
-* Documentation wikis
-* Screenshots scattered across folders
+- React 18 (functional components + hooks)
+- Vite 5 (dev server + build)
+- Single-file architecture (`src/App.jsx`)
+- Inline SVG icons (no icon library dependencies)
+- JetBrains Mono + Nunito fonts (Google Fonts)
 
-PocketKB brings these together into **one focused system designed for troubleshooting workflows**.
+## Project Structure
 
----
+```
+PocketKB/
+├── index.html          # Entry point with font imports
+├── package.json        # Dependencies and scripts
+├── vite.config.js      # Vite configuration
+└── src/
+    ├── main.jsx        # React DOM mount
+    ├── App.jsx         # Entire application (data, components, screens)
+    └── index.css       # Design system and responsive styles
+```
 
-## Core Idea
+## Roadmap
 
-PocketKB acts as a **personal troubleshooting brain**.
-
-Typical workflow:
-
-Problem occurs
-↓
-Search PocketKB
-↓
-Open article
-↓
-Follow steps
-↓
-Resolve issue
-
----
-
-## Key Features (Planned)
-
-### Structured Knowledge Base
-
-Example categories:
-
-* Windows
-* VPN
-* Printers
-* Salesforce
-* Phones
-* Email
-* Network
-* Other
-
-### Troubleshooting Article Format
-
-Each article contains:
-
-* Title
-* Problem
-* Symptoms
-* Fix Steps
-* Screenshots
-* Notes
-* Tags
-
-### Mobile-First Design
-
-Navigation flow:
-
-Category → Article List → Article
-
-### Screenshot-Driven Documentation
-
-Supports:
-
-* embedded screenshots
-* step-by-step visuals
-* annotated instructions
-
-### Personal Add-On Sections
-
-PocketKB can also store personal reference information:
-
-* Food
-* Travel
-* Tools
-* Ideas
-* Personal notes
-
----
-
-## Project Goals
-
-PocketKB aims to provide:
-
-* fast capture of solutions
-* structured troubleshooting documentation
-* quick search
-* simple organization
-* minimal cognitive overhead
-
----
-
-## Technical Direction
-
-Planned architecture:
-
-* Mobile-first interface
-* Local storage
-* Screenshot attachments
-* Tagging
-* Search
-* Cross-platform support
-
-Potential platforms:
-
-* iOS
-* Android
-* Desktop
-* Web
-
----
-
-## Future Ideas
-
-Possible features:
-
-* cloud sync
-* shared knowledge bases
-* AI search
-* AI generated troubleshooting summaries
-
----
-
-## Author
-
-Phil Oyler
-
-PocketKB is being developed as part of the broader Nova ecosystem of tools and experimentation projects.
-
+- [ ] LocalStorage / IndexedDB persistence for user-created fixes
+- [ ] Camera OCR via Tesseract.js for error text extraction
+- [ ] Create / edit fix form
+- [ ] Pinning and starring fixes
+- [ ] Full-text search indexing
+- [ ] PWA manifest and service worker for offline use
+- [ ] Export / import knowledge base as JSON
