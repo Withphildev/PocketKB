@@ -695,3 +695,58 @@ input {
     border-right: 1px solid var(--border);
   }
 }
+
+/* ---- Create Fix Form ---- */
+.form-group {
+  margin-bottom: 1.35rem;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.55rem;
+  text-transform: uppercase;
+}
+
+.form-input {
+  width: 100%;
+  background: var(--bg-tertiary);
+  border: 1.5px solid var(--border);
+  border-radius: 0.75rem;
+  color: var(--text-primary);
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  line-height: 1.5;
+}
+
+.form-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.form-input-error {
+  border-color: #f87171 !important;
+  box-shadow: 0 0 10px rgba(248, 113, 113, 0.2) !important;
+}
+
+.form-error {
+  display: block;
+  font-size: 0.72rem;
+  color: #f87171;
+  margin-top: 0.35rem;
+  font-family: 'JetBrains Mono', monospace;
+}

@@ -25,6 +25,18 @@ const Icons = {
   Check: (p) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
   ),
+  Plus: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+  ),
+  Trash: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+  ),
+  Image: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+  ),
+  Tag: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.42 0l7.29-7.29a1 1 0 0 0 0-1.42z"/><path d="M7 7h.01"/></svg>
+  ),
   // Category icons
   Wifi: (p) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
@@ -75,7 +87,7 @@ const CATEGORIES = [
   { id: 'printing',        label: 'Printing',          icon: 'Printer', color: '#fb7185' },
 ];
 
-const FIXES = [
+const INITIAL_FIXES = [
   {
     id: 1,
     title: 'VPN Connection Drop',
@@ -249,14 +261,13 @@ const FIXES = [
 ];
 
 /* ============================================================
-   HELPER — get category color for a tag
+   HELPER — tag color
    ============================================================ */
 const tagColor = (tag) => {
   const lower = tag.toLowerCase();
   for (const cat of CATEGORIES) {
     if (cat.label.toLowerCase().includes(lower) || cat.id.includes(lower)) return cat.color;
   }
-  // Fallback for generic tags
   const map = {
     windows: '#4ade80', linux: '#fb923c', nginx: '#38bdf8',
     smtp: '#fbbf24', outlook: '#fbbf24', azure: '#2dd4bf',
@@ -269,24 +280,15 @@ const tagColor = (tag) => {
    SUB-COMPONENTS
    ============================================================ */
 
-/** Color-coded tag pill */
 const Tag = ({ label }) => {
   const c = tagColor(label);
   return (
-    <span
-      className="tag"
-      style={{
-        color: c,
-        background: `${c}12`,
-        border: `1px solid ${c}25`,
-      }}
-    >
+    <span className="tag" style={{ color: c, background: `${c}12`, border: `1px solid ${c}25` }}>
       {label}
     </span>
   );
 };
 
-/** Numbered fix result card (search / browse list) */
 const FixCard = ({ fix, index, onClick }) => (
   <div className="card fix-card" onClick={onClick}>
     <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
@@ -302,7 +304,6 @@ const FixCard = ({ fix, index, onClick }) => (
   </div>
 );
 
-/** 3-col category grid card */
 const CategoryCard = ({ cat, count, onClick }) => (
   <div className="cat-card" onClick={onClick}>
     <div
@@ -317,13 +318,12 @@ const CategoryCard = ({ cat, count, onClick }) => (
 );
 
 /* ============================================================
-   DETAIL VIEW (slide-up overlay)
+   DETAIL VIEW
    ============================================================ */
 const DetailView = ({ fix, onBack }) => {
   const [done, setDone] = useState({});
   const toggle = (i) => setDone((prev) => ({ ...prev, [i]: !prev[i] }));
 
-  /** Renders step text, highlighting backtick-wrapped code */
   const renderStep = (text) =>
     text.split(/(`.+?`)/g).map((part, idx) =>
       part.startsWith('`') && part.endsWith('`') ? (
@@ -335,7 +335,6 @@ const DetailView = ({ fix, onBack }) => {
 
   return (
     <div className="detail-overlay">
-      {/* Header */}
       <div className="top-bar">
         <button className="back-btn" onClick={onBack}>
           <Icon name="ChevronLeft" size={22} />
@@ -344,22 +343,40 @@ const DetailView = ({ fix, onBack }) => {
           {fix.title}
         </h2>
       </div>
-
-      {/* Body */}
       <div className="scroll-area" style={{ padding: '1.25rem' }}>
-        {/* Tags */}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.15rem' }}>
           {fix.tags.map((t) => <Tag key={t} label={t} />)}
         </div>
-
-        {/* Summary */}
         <div className="detail-summary">{fix.summary}</div>
 
-        {/* Steps */}
+        {/* Error screenshots (if any) */}
+        {fix.screenshots && fix.screenshots.length > 0 && (
+          <div style={{ marginBottom: '1.75rem' }}>
+            <div className="steps-header" style={{ marginBottom: '0.75rem' }}>
+              <Icon name="Image" size={14} sw={2} /> ERROR SCREENSHOTS
+            </div>
+            <div style={{ display: 'flex', gap: '0.65rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+              {fix.screenshots.map((src, i) => (
+                <img
+                  key={i}
+                  src={src}
+                  alt={`Screenshot ${i + 1}`}
+                  style={{
+                    height: '140px',
+                    borderRadius: '0.65rem',
+                    border: '1px solid var(--border)',
+                    objectFit: 'cover',
+                    flexShrink: 0,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="steps-header">
           <Icon name="Check" size={14} sw={3} /> STEPS TO RESOLVE
         </div>
-
         {fix.steps.map((step, i) => (
           <div
             key={i}
@@ -389,73 +406,316 @@ const DetailView = ({ fix, onBack }) => {
 const CameraScreen = ({ onBack }) => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
-  const [ready, setReady] = useState(false);
   const [flash, setFlash] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-          audio: false,
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
         if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
         streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-          setReady(true);
-        }
-      } catch (err) {
-        console.warn('Camera access denied or unavailable:', err);
-      }
+        if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
+      } catch (err) { console.warn('Camera unavailable:', err); }
     })();
-    return () => {
-      cancelled = true;
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
+    return () => { cancelled = true; streamRef.current?.getTracks().forEach((t) => t.stop()); };
   }, []);
 
-  const handleCapture = () => {
-    setFlash(true);
-    setTimeout(() => setFlash(false), 300);
-    // Future: grab frame for OCR
-  };
-
-  const handleBack = () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    onBack();
-  };
+  const handleCapture = () => { setFlash(true); setTimeout(() => setFlash(false), 300); };
+  const handleBack = () => { streamRef.current?.getTracks().forEach((t) => t.stop()); onBack(); };
 
   return (
     <div className="camera-screen">
       <video ref={videoRef} className="camera-viewfinder" autoPlay playsInline muted />
-
-      {/* Flash effect */}
-      {flash && (
-        <div style={{ position: 'absolute', inset: 0, background: 'white', opacity: 0.3, zIndex: 5, transition: 'opacity 0.3s' }} />
-      )}
-
+      {flash && <div style={{ position: 'absolute', inset: 0, background: 'white', opacity: 0.3, zIndex: 5 }} />}
       <div className="camera-overlay">
-        {/* Back button */}
-        <button className="camera-back" onClick={handleBack}>
-          <Icon name="ChevronLeft" size={20} />
-        </button>
-
-        {/* Center: frame + label */}
+        <button className="camera-back" onClick={handleBack}><Icon name="ChevronLeft" size={20} /></button>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div className="bracket-frame">
-            <div className="bl" />
-            <div className="br" />
-          </div>
+          <div className="bracket-frame"><div className="bl" /><div className="br" /></div>
           <div className="camera-label">POINT AT ERROR SCREEN</div>
         </div>
+        <button className="shutter-ring" onClick={handleCapture}><div className="shutter-btn-inner" /></button>
+      </div>
+    </div>
+  );
+};
 
-        {/* Shutter */}
-        <button className="shutter-ring" onClick={handleCapture}>
-          <div className="shutter-btn-inner" />
+/* ============================================================
+   CREATE FIX FORM
+   ============================================================ */
+const CreateFixForm = ({ onClose, onSave }) => {
+  const [title, setTitle]       = useState('');
+  const [category, setCategory] = useState(CATEGORIES[0].id);
+  const [tagsInput, setTagsInput] = useState('');
+  const [summary, setSummary]   = useState('');
+  const [steps, setSteps]       = useState(['']);
+  const [screenshots, setScreenshots] = useState([]); // array of base64 dataURLs
+  const [errors, setErrors]     = useState({});
+  const fileInputRef = useRef(null);
+  const titleRef = useRef(null);
+
+  useEffect(() => { setTimeout(() => titleRef.current?.focus(), 150); }, []);
+
+  // Steps helpers
+  const updateStep    = (i, val) => setSteps((s) => s.map((v, idx) => idx === i ? val : v));
+  const addStep       = ()       => setSteps((s) => [...s, '']);
+  const removeStep    = (i)      => setSteps((s) => s.filter((_, idx) => idx !== i));
+
+  // Screenshot upload
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => setScreenshots((prev) => [...prev, ev.target.result]);
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+  const removeScreenshot = (i) => setScreenshots((s) => s.filter((_, idx) => idx !== i));
+
+  // Validation & save
+  const handleSave = () => {
+    const errs = {};
+    if (!title.trim()) errs.title = 'Title is required';
+    if (!summary.trim()) errs.summary = 'Summary is required';
+    if (steps.every((s) => !s.trim())) errs.steps = 'Add at least one step';
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
+    const tags = tagsInput
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    onSave({
+      title: title.trim(),
+      category,
+      tags: tags.length ? tags : [CATEGORIES.find((c) => c.id === category)?.label || 'General'],
+      summary: summary.trim(),
+      steps: steps.filter((s) => s.trim()),
+      screenshots,
+      updatedAgo: 'just now',
+    });
+  };
+
+  const selectedCat = CATEGORIES.find((c) => c.id === category);
+
+  return (
+    <div className="detail-overlay">
+      {/* Header */}
+      <div className="top-bar" style={{ justifyContent: 'space-between' }}>
+        <button className="back-btn" onClick={onClose}>
+          <Icon name="X" size={20} />
         </button>
+        <h2 style={{ flex: 1, textAlign: 'center', fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', letterSpacing: 0 }}>
+          NEW FIX
+        </h2>
+        <button
+          onClick={handleSave}
+          style={{
+            background: 'var(--accent)',
+            color: 'var(--bg-primary)',
+            border: 'none',
+            borderRadius: '0.6rem',
+            padding: '0.45rem 0.9rem',
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 700,
+            fontSize: '0.7rem',
+            letterSpacing: '0.05em',
+          }}
+        >
+          SAVE
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="scroll-area" style={{ padding: '1.25rem' }}>
+
+        {/* Title */}
+        <div className="form-group">
+          <label className="form-label">TITLE</label>
+          <input
+            ref={titleRef}
+            className={`form-input${errors.title ? ' form-input-error' : ''}`}
+            type="text"
+            placeholder="e.g. VPN Connection Drop"
+            value={title}
+            onChange={(e) => { setTitle(e.target.value); setErrors((err) => ({ ...err, title: '' })); }}
+          />
+          {errors.title && <span className="form-error">{errors.title}</span>}
+        </div>
+
+        {/* Category */}
+        <div className="form-group">
+          <label className="form-label">CATEGORY</label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setCategory(cat.id)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.65rem 0.3rem',
+                  borderRadius: '0.75rem',
+                  border: `1.5px solid ${category === cat.id ? cat.color : 'var(--border)'}`,
+                  background: category === cat.id ? `${cat.color}12` : 'var(--bg-card)',
+                  color: category === cat.id ? cat.color : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontSize: '0.62rem',
+                  fontWeight: 700,
+                }}
+              >
+                <Icon name={cat.icon} size={18} sw={category === cat.id ? 2.5 : 1.8} />
+                <span style={{ lineHeight: 1.2, textAlign: 'center' }}>{cat.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tags */}
+        <div className="form-group">
+          <label className="form-label">
+            <Icon name="Tag" size={11} sw={2} /> TAGS
+            <span style={{ fontWeight: 400, opacity: 0.6, marginLeft: '0.4rem' }}>(comma-separated)</span>
+          </label>
+          <input
+            className="form-input"
+            type="text"
+            placeholder="e.g. Windows, VPN, Networking"
+            value={tagsInput}
+            onChange={(e) => setTagsInput(e.target.value)}
+          />
+          {tagsInput && (
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+              {tagsInput.split(',').filter((t) => t.trim()).map((t, i) => <Tag key={i} label={t.trim()} />)}
+            </div>
+          )}
+        </div>
+
+        {/* Summary */}
+        <div className="form-group">
+          <label className="form-label">SUMMARY</label>
+          <textarea
+            className={`form-input${errors.summary ? ' form-input-error' : ''}`}
+            placeholder="1-2 sentence description of the issue and fix..."
+            value={summary}
+            onChange={(e) => { setSummary(e.target.value); setErrors((err) => ({ ...err, summary: '' })); }}
+            rows={3}
+            style={{ resize: 'vertical', minHeight: '80px' }}
+          />
+          {errors.summary && <span className="form-error">{errors.summary}</span>}
+        </div>
+
+        {/* Steps */}
+        <div className="form-group">
+          <label className="form-label">
+            <Icon name="Check" size={11} sw={3} /> STEPS TO RESOLVE
+          </label>
+          {errors.steps && <span className="form-error" style={{ display: 'block', marginBottom: '0.5rem' }}>{errors.steps}</span>}
+          {steps.map((step, i) => (
+            <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+              <div
+                className="step-num"
+                style={{ background: 'var(--accent-dim)', color: 'var(--accent)', flexShrink: 0, marginTop: '0.5rem', width: '26px', height: '26px' }}
+              >
+                {i + 1}
+              </div>
+              <textarea
+                className="form-input"
+                placeholder={`Step ${i + 1} — wrap commands in backticks e.g. \`ipconfig\``}
+                value={step}
+                onChange={(e) => { updateStep(i, e.target.value); setErrors((err) => ({ ...err, steps: '' })); }}
+                rows={2}
+                style={{ flex: 1, resize: 'vertical', minHeight: '52px' }}
+              />
+              {steps.length > 1 && (
+                <button
+                  onClick={() => removeStep(i)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', padding: '0.5rem', marginTop: '0.25rem', flexShrink: 0, cursor: 'pointer' }}
+                >
+                  <Icon name="Trash" size={16} sw={2} />
+                </button>
+              )}
+            </div>
+          ))}
+          <button
+            onClick={addStep}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.4rem',
+              background: 'var(--accent-dim)', border: '1px dashed rgba(0,229,255,0.25)',
+              color: 'var(--accent)', borderRadius: '0.65rem', padding: '0.55rem 0.85rem',
+              width: '100%', justifyContent: 'center', cursor: 'pointer',
+              fontFamily: "'JetBrains Mono', monospace", fontSize: '0.72rem', fontWeight: 700,
+              letterSpacing: '0.05em', marginTop: '0.25rem',
+            }}
+          >
+            <Icon name="Plus" size={14} sw={2.5} /> ADD STEP
+          </button>
+        </div>
+
+        {/* Screenshots */}
+        <div className="form-group">
+          <label className="form-label">
+            <Icon name="Image" size={11} sw={2} /> ERROR SCREENSHOTS
+            <span style={{ fontWeight: 400, opacity: 0.6, marginLeft: '0.4rem' }}>(optional)</span>
+          </label>
+
+          {/* Image previews */}
+          {screenshots.length > 0 && (
+            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+              {screenshots.map((src, i) => (
+                <div key={i} style={{ position: 'relative', display: 'inline-block' }}>
+                  <img
+                    src={src}
+                    alt={`Screenshot ${i + 1}`}
+                    style={{ width: '100px', height: '80px', objectFit: 'cover', borderRadius: '0.6rem', border: '1px solid var(--border)' }}
+                  />
+                  <button
+                    onClick={() => removeScreenshot(i)}
+                    style={{
+                      position: 'absolute', top: '-6px', right: '-6px',
+                      width: '20px', height: '20px', borderRadius: '50%',
+                      background: '#f87171', border: 'none', color: 'white',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Icon name="X" size={11} sw={2.5} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.55rem',
+              background: 'var(--bg-card)', border: '1px dashed var(--border)',
+              color: 'var(--text-secondary)', borderRadius: '0.85rem', padding: '0.85rem 1rem',
+              width: '100%', justifyContent: 'center', cursor: 'pointer',
+              fontSize: '0.85rem', fontWeight: 600,
+            }}
+          >
+            <Icon name="Image" size={18} sw={1.8} />
+            Tap to attach screenshots
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+          />
+        </div>
+
+        {/* Bottom padding */}
+        <div style={{ height: '1rem' }} />
       </div>
     </div>
   );
@@ -464,7 +724,7 @@ const CameraScreen = ({ onBack }) => {
 /* ============================================================
    SCREEN: HOME
    ============================================================ */
-const HomeScreen = ({ navigate }) => (
+const HomeScreen = ({ navigate, onAdd }) => (
   <div className="scroll-area" style={{ padding: '1.5rem 1.25rem 2rem' }}>
     {/* Logo */}
     <div style={{ textAlign: 'center', marginBottom: '2.5rem', paddingTop: '1.5rem' }}>
@@ -507,6 +767,17 @@ const HomeScreen = ({ navigate }) => (
           <div className="action-desc">Snap an error screen for instant lookup</div>
         </div>
       </button>
+
+      {/* Add New Fix button */}
+      <button className="action-btn" onClick={onAdd} style={{ borderColor: 'rgba(0,229,255,0.2)', background: 'rgba(0,229,255,0.04)' }}>
+        <div className="action-icon" style={{ background: 'rgba(0,229,255,0.12)', color: 'var(--accent)', boxShadow: '0 0 16px var(--accent-glow)', border: '1px solid rgba(0,229,255,0.2)' }}>
+          <Icon name="Plus" size={28} sw={2.5} />
+        </div>
+        <div>
+          <div className="action-label" style={{ color: 'var(--accent)' }}>Add Fix</div>
+          <div className="action-desc">Create a new KB entry with steps &amp; screenshots</div>
+        </div>
+      </button>
     </div>
   </div>
 );
@@ -514,38 +785,30 @@ const HomeScreen = ({ navigate }) => (
 /* ============================================================
    SCREEN: SEARCH
    ============================================================ */
-const SearchScreen = ({ onBack, onSelectFix }) => {
+const SearchScreen = ({ onBack, onSelectFix, fixes }) => {
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const inputRef = useRef(null);
 
-  useEffect(() => {
-    // Auto-focus on mount
-    const t = setTimeout(() => inputRef.current?.focus(), 100);
-    return () => clearTimeout(t);
-  }, []);
+  useEffect(() => { const t = setTimeout(() => inputRef.current?.focus(), 100); return () => clearTimeout(t); }, []);
 
   const results = useMemo(() => {
-    if (!query.trim()) return FIXES; // show all when empty
+    if (!query.trim()) return fixes;
     const q = query.toLowerCase();
-    return FIXES.filter(
+    return fixes.filter(
       (f) =>
         f.title.toLowerCase().includes(q) ||
         f.summary.toLowerCase().includes(q) ||
         f.tags.some((t) => t.toLowerCase().includes(q))
     );
-  }, [query]);
+  }, [query, fixes]);
 
   return (
     <>
       <div className="top-bar">
-        <button className="back-btn" onClick={onBack}>
-          <Icon name="ChevronLeft" size={22} />
-        </button>
+        <button className="back-btn" onClick={onBack}><Icon name="ChevronLeft" size={22} /></button>
         <h2>SEARCH</h2>
       </div>
-
-      {/* Search field */}
       <div style={{ padding: '0.75rem 1.25rem' }}>
         <div className={`search-wrap${focused || query ? ' focused' : ''}`}>
           <Icon name="Search" size={18} sw={2} />
@@ -565,8 +828,6 @@ const SearchScreen = ({ onBack, onSelectFix }) => {
           )}
         </div>
       </div>
-
-      {/* Results */}
       <div className="scroll-area" style={{ padding: '0.5rem 1.25rem 2rem' }}>
         <div className="mono" style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '0.85rem', letterSpacing: '0.12em' }}>
           {query ? `RESULTS (${results.length})` : `ALL FIXES (${results.length})`}
@@ -589,58 +850,40 @@ const SearchScreen = ({ onBack, onSelectFix }) => {
 /* ============================================================
    SCREEN: BROWSE
    ============================================================ */
-const BrowseScreen = ({ onBack, onSelectFix }) => {
+const BrowseScreen = ({ onBack, onSelectFix, fixes }) => {
   const [selectedCat, setSelectedCat] = useState(null);
 
-  // Count fixes per category
   const counts = useMemo(() => {
     const m = {};
     CATEGORIES.forEach((c) => { m[c.id] = 0; });
-    FIXES.forEach((f) => { if (m[f.category] !== undefined) m[f.category]++; });
+    fixes.forEach((f) => { if (m[f.category] !== undefined) m[f.category]++; });
     return m;
-  }, []);
+  }, [fixes]);
 
   const catFixes = useMemo(
-    () => (selectedCat ? FIXES.filter((f) => f.category === selectedCat.id) : []),
-    [selectedCat]
+    () => (selectedCat ? fixes.filter((f) => f.category === selectedCat.id) : []),
+    [selectedCat, fixes]
   );
 
   return (
     <>
       <div className="top-bar">
-        <button className="back-btn" onClick={onBack}>
-          <Icon name="ChevronLeft" size={22} />
-        </button>
+        <button className="back-btn" onClick={onBack}><Icon name="ChevronLeft" size={22} /></button>
         <h2>BROWSE</h2>
       </div>
-
       <div className="scroll-area" style={{ padding: '1.25rem' }}>
         <div className="browse-grid">
           {CATEGORIES.map((cat) => (
-            <CategoryCard
-              key={cat.id}
-              cat={cat}
-              count={counts[cat.id]}
-              onClick={() => setSelectedCat(cat)}
-            />
+            <CategoryCard key={cat.id} cat={cat} count={counts[cat.id]} onClick={() => setSelectedCat(cat)} />
           ))}
         </div>
       </div>
 
-      {/* Category fix-list sub-overlay */}
       {selectedCat && (
         <div className="category-list-overlay">
           <div className="top-bar">
-            <button className="back-btn" onClick={() => setSelectedCat(null)}>
-              <Icon name="ChevronLeft" size={22} />
-            </button>
-            <div
-              style={{
-                width: '1.65rem', height: '1.65rem', borderRadius: '0.45rem',
-                background: `${selectedCat.color}15`, color: selectedCat.color,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
+            <button className="back-btn" onClick={() => setSelectedCat(null)}><Icon name="ChevronLeft" size={22} /></button>
+            <div style={{ width: '1.65rem', height: '1.65rem', borderRadius: '0.45rem', background: `${selectedCat.color}15`, color: selectedCat.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Icon name={selectedCat.icon} size={14} sw={2.5} />
             </div>
             <h2 style={{ color: 'var(--text-primary)', letterSpacing: 0, fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: '1rem' }}>
@@ -668,27 +911,31 @@ const BrowseScreen = ({ onBack, onSelectFix }) => {
    MAIN APPLICATION
    ============================================================ */
 export default function App() {
-  // Screen state: 'home' | 'search' | 'browse' | 'camera'
-  const [screen, setScreen] = useState('home');
+  const [screen, setScreen]         = useState('home');
+  const [fixes, setFixes]           = useState(INITIAL_FIXES);
   const [selectedFix, setSelectedFix] = useState(null);
+  const [showCreate, setShowCreate]  = useState(false);
+  const nextId = useRef(INITIAL_FIXES.length + 1);
 
   const navigate = useCallback((s) => setScreen(s), []);
 
+  const handleAddFix = useCallback((fixData) => {
+    const newFix = {
+      ...fixData,
+      id: nextId.current++,
+    };
+    setFixes((prev) => [newFix, ...prev]);
+    setShowCreate(false);
+  }, []);
+
   return (
     <div className="app-shell">
-      {/* Active screen content */}
-      {screen === 'home' && <HomeScreen navigate={navigate} />}
-      {screen === 'search' && (
-        <SearchScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} />
-      )}
-      {screen === 'browse' && (
-        <BrowseScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} />
-      )}
-
-      {/* Camera is an overlay that hides the nav */}
+      {screen === 'home'   && <HomeScreen navigate={navigate} onAdd={() => setShowCreate(true)} />}
+      {screen === 'search' && <SearchScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} />}
+      {screen === 'browse' && <BrowseScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} />}
       {screen === 'camera' && <CameraScreen onBack={() => setScreen('home')} />}
 
-      {/* Bottom navigation — hidden on camera screen */}
+      {/* Bottom nav — hidden on camera */}
       {screen !== 'camera' && (
         <nav className="bottom-nav">
           {[
@@ -710,10 +957,11 @@ export default function App() {
         </nav>
       )}
 
-      {/* Detail overlay — slides up over any screen */}
-      {selectedFix && (
-        <DetailView fix={selectedFix} onBack={() => setSelectedFix(null)} />
-      )}
+      {/* Detail overlay */}
+      {selectedFix && <DetailView fix={selectedFix} onBack={() => setSelectedFix(null)} />}
+
+      {/* Create Fix overlay */}
+      {showCreate && <CreateFixForm onClose={() => setShowCreate(false)} onSave={handleAddFix} />}
     </div>
   );
 }
