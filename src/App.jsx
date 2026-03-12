@@ -936,6 +936,7 @@ export default function App() {
   const [screen, setScreen]         = useState('home');
   const [fixes, setFixes]           = useState(INITIAL_FIXES); // Fallback to initial fixes if Supabase not ready
   const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState(null);
   const [selectedFix, setSelectedFix] = useState(null);
   const [showCreate, setShowCreate]  = useState(false);
   const nextId = useRef(INITIAL_FIXES.length + 1);
@@ -946,6 +947,7 @@ export default function App() {
   const fetchFixes = useCallback(async () => {
     if (!supabase) return;
     setLoading(true);
+    setError(null);
     try {
       const { data, error } = await supabase
         .from('fixes')
@@ -953,11 +955,14 @@ export default function App() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      if (data && data.length > 0) {
-        setFixes(data);
+      if (data) {
+        setFixes(data.length > 0 ? data : INITIAL_FIXES);
       }
     } catch (err) {
       console.error('Error fetching fixes:', err);
+      if (err.code === 'PGRST205') {
+        setError('DATABASE TABLE MISSING: Please run the SQL script to create the "fixes" table.');
+      }
     } finally {
       setLoading(false);
     }
@@ -1038,6 +1043,18 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {/* Error Banner */}
+      {error && (
+        <div style={{
+          background: '#ef4444', color: 'white', padding: '0.75rem 1.25rem',
+          fontSize: '0.7rem', fontFamily: "'JetBrains Mono', monospace",
+          textAlign: 'center', fontWeight: 800, lineHeight: 1.4,
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
+          position: 'sticky', top: 0, zIndex: 2000,
+        }}>
+          {error}
+        </div>
+      )}
       {screen === 'home'   && <HomeScreen navigate={navigate} onAdd={() => setShowCreate(true)} />}
       {screen === 'search' && <SearchScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} />}
       {screen === 'browse' && <BrowseScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} />}
