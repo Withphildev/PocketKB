@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import Tesseract from 'tesseract.js';
 
 // Supabase Initialization
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -484,10 +485,13 @@ const DetailView = ({ fix, onBack, onEdit, onDeleteTrigger, categories }) => {
 /* ============================================================
    CAMERA SCREEN
    ============================================================ */
-const CameraScreen = ({ onBack }) => {
+const CameraScreen = ({ onBack, onScan }) => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [flash, setFlash] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -502,20 +506,103 @@ const CameraScreen = ({ onBack }) => {
     return () => { cancelled = true; streamRef.current?.getTracks().forEach((t) => t.stop()); };
   }, []);
 
-  const handleCapture = () => { setFlash(true); setTimeout(() => setFlash(false), 300); };
+  const performOCR = async (imageSource) => {
+    setScanning(true);
+    setProgress(0);
+    try {
+      const { data: { text } } = await Tesseract.recognize(imageSource, 'eng', {
+        logger: m => {
+          if (m.status === 'recognizing text') setProgress(Math.floor(m.progress * 100));
+        }
+      });
+      
+      // Clean up text — remove noise, keep alphanumeric and common symbols
+      const clean = text.replace(/[^a-zA-Z0-9\s.,\-:()]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (clean) onScan(clean);
+      else alert("Could not read any text. Try better lighting or a clearer shot.");
+    } catch (err) {
+      console.error('OCR Error:', err);
+      alert("Scanning failed. Please try again.");
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleCapture = () => {
+    if (!videoRef.current) return;
+    setFlash(true);
+    setTimeout(() => setFlash(false), 300);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoRef.current, 0, 0);
+    
+    performOCR(canvas.toDataURL('image/png'));
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => performOCR(ev.target.result);
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   const handleBack = () => { streamRef.current?.getTracks().forEach((t) => t.stop()); onBack(); };
 
   return (
     <div className="camera-screen">
       <video ref={videoRef} className="camera-viewfinder" autoPlay playsInline muted />
-      {flash && <div style={{ position: 'absolute', inset: 0, background: 'white', opacity: 0.3, zIndex: 5 }} />}
+      {flash && <div style={{ position: 'absolute', inset: 0, background: 'white', opacity: 0.3, zIndex: 10 }} />}
+      
+      {scanning && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 20, backdropFilter: 'blur(10px)' }}>
+          <div className="nav-dot" style={{ width: '60px', height: '60px', background: 'var(--accent)', boxShadow: '0 0 30px var(--accent)', borderRadius: '50%', animation: 'pulse 1.5s infinite alternate', marginBottom: '2rem' }} />
+          <div className="mono" style={{ color: 'var(--accent)', fontSize: '0.9rem', letterSpacing: '0.2em', fontWeight: 800 }}>SCANNING... {progress}%</div>
+          <div style={{ width: '200px', height: '2px', background: 'rgba(255,255,255,0.1)', marginTop: '1rem', borderRadius: '1px', overflow: 'hidden' }}>
+            <div style={{ width: `${progress}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.3s' }} />
+          </div>
+        </div>
+      )}
+
       <div className="camera-overlay">
         <button className="camera-back" onClick={handleBack}><Icon name="ChevronLeft" size={20} /></button>
+        
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div className="bracket-frame"><div className="bl" /><div className="br" /></div>
           <div className="camera-label">POINT AT ERROR SCREEN</div>
         </div>
-        <button className="shutter-ring" onClick={handleCapture}><div className="shutter-btn-inner" /></button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2.5rem', marginBottom: '1.5rem' }}>
+          {/* Gallery Button */}
+          <button 
+            className="action-btn-circle" 
+            onClick={() => fileInputRef.current?.click()}
+            style={{ width: '52px', height: '52px', background: 'rgba(255,255,255,0.1)', border: '1.5px solid rgba(255,255,255,0.2)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Icon name="Image" size={22} sw={2} />
+          </button>
+
+          {/* Shutter Button */}
+          <button className="shutter-ring" onClick={handleCapture} disabled={scanning}>
+            <div className="shutter-btn-inner" />
+          </button>
+
+          {/* Spacer to keep shutter centered */}
+          <div style={{ width: '52px' }} />
+        </div>
+
+        <input 
+          ref={fileInputRef} 
+          type="file" 
+          accept="image/*" 
+          onChange={handleFileUpload} 
+          style={{ display: 'none' }} 
+        />
       </div>
     </div>
   );
@@ -1052,7 +1139,7 @@ const AuthForm = ({ onAuthSuccess }) => {
 /* ============================================================
    SETTINGS SCREEN
    ============================================================ */
-const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, onLogout }) => {
+const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, onLogout, onSwitchOrg, onJoinOrg }) => {
   return (
     <div className="fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="top-bar">
@@ -1071,15 +1158,38 @@ const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, o
           </div>
         </div>
 
-        {/* Current Org */}
+        {/* Workspaces */}
         <div className="settings-section">
-          <div className="mono" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.1em' }}>WORKSPACE</div>
-          <div className="settings-group">
-            <div className="settings-item">
-              <Icon name="Home" size={18} color="var(--accent)" />
-              <div className="settings-item-label">{currentOrg?.name || 'Loading organization...'}</div>
-              <div className="settings-item-value" style={{ fontSize: '0.6rem', opacity: 0.6 }}>{memberships.length} JOINED</div>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <div className="mono" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.1em' }}>WORKSPACES</div>
+            <button 
+              onClick={onJoinOrg}
+              style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+            >
+              <Icon name="Plus" size={12} sw={3} /> JOIN
+            </button>
+          </div>
+          
+          <div className="workspace-list">
+            {memberships.map((m) => {
+              const isActive = currentOrg?.id === m.org.id;
+              return (
+                <div key={m.org.id} className={`workspace-item${isActive ? ' active' : ''}`} onClick={() => !isActive && onSwitchOrg(m.org)}>
+                  <div className="workspace-icon">
+                    <Icon name="Home" size={18} color={isActive ? 'var(--bg-primary)' : 'var(--accent)'} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div className="workspace-name">{m.org.name}</div>
+                    <div className="workspace-role">{m.role.toUpperCase()}</div>
+                  </div>
+                  {isActive ? (
+                    <div className="active-badge">ACTIVE</div>
+                  ) : (
+                    <div className="switch-hint">TAP TO SWITCH</div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -1225,8 +1335,8 @@ const HomeScreen = ({ navigate, onAdd, fixes, categories }) => {
 /* ============================================================
    SCREEN: SEARCH
    ============================================================ */
-const SearchScreen = ({ onBack, onSelectFix, fixes, categories }) => {
-  const [query, setQuery] = useState('');
+const SearchScreen = ({ onBack, onSelectFix, fixes, categories, initialQuery = '' }) => {
+  const [query, setQuery] = useState(initialQuery);
   const [focused, setFocused] = useState(false);
   const inputRef = useRef(null);
 
@@ -1378,6 +1488,8 @@ export default function App() {
   const [editingFix, setEditingFix] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [fixToDelete, setFixToDelete] = useState(null);
+  const [ocrQuery, setOcrQuery] = useState(''); // Text scanned from camera/upload
+  const [showJoinOrg, setShowJoinOrg] = useState(false);
 
   const navigate = (s) => setScreen(s);
 
@@ -1398,27 +1510,31 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Fetch Memberships & Select Initial Org
-  useEffect(() => {
-    const fetchOrgData = async () => {
-      if (!user || !supabase) return;
-      try {
-        const { data, error } = await supabase
-          .from('org_members')
-          .select('*, org:orgs(*)')
-          .eq('user_id', user.id);
-        
-        if (error) throw error;
-        setMemberships(data || []);
-        if (data && data.length > 0) {
+  const fetchOrgData = useCallback(async () => {
+    if (!user || !supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('org_members')
+        .select('*, org:orgs(*)')
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      setMemberships(data || []);
+      
+      // If we don't have a current org yet, or the current org isn't in the list anymore
+      if (data && data.length > 0) {
+        if (!currentOrg || !data.some(m => m.org_id === currentOrg.id)) {
           setCurrentOrg(data[0].org);
         }
-      } catch (err) {
-        console.error('Error fetching orgs:', err);
       }
-    };
+    } catch (err) {
+      console.error('Error fetching orgs:', err);
+    }
+  }, [user, currentOrg]);
+
+  useEffect(() => {
     fetchOrgData();
-  }, [user]);
+  }, [fetchOrgData]);
 
   // Fetch Categories for current Org
   const fetchCategories = useCallback(async () => {
@@ -1689,6 +1805,75 @@ export default function App() {
     if (!supabase) return;
     await supabase.auth.signOut();
     setScreen('home');
+    setCurrentOrg(null);
+    setMemberships([]);
+  };
+
+  const handleSwitchOrg = (org) => {
+    setCurrentOrg(org);
+    setScreen('home');
+  };
+
+  const handleJoinOrg = async (inviteCode) => {
+    if (!user || !supabase || !inviteCode) return;
+    setLoading(true);
+    try {
+      // First try to find by slug (slugs are strings, never UUIDs)
+      let { data: org, error: orgErr } = await supabase
+        .from('orgs')
+        .select('*')
+        .eq('slug', inviteCode)
+        .maybeSingle();
+      
+      // If not found by slug, and it looks like a UUID, try by ID
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(inviteCode);
+      if (!org && isUUID) {
+        const { data: orgById, error: idErr } = await supabase
+          .from('orgs')
+          .select('*')
+          .eq('id', inviteCode)
+          .maybeSingle();
+        if (orgById) org = orgById;
+      }
+      
+      if (!org) throw new Error("Workspace not found. Please check the ID or slug.");
+
+      // Check if already a member
+      const { data: existing } = await supabase
+        .from('org_members')
+        .select('*')
+        .eq('org_id', org.id)
+        .eq('user_id', user.id)
+        .single();
+      
+      if (existing) {
+        alert(`You are already a member of ${org.name}!`);
+        setCurrentOrg(org);
+        setShowJoinOrg(false);
+        return;
+      }
+
+      // Join the org
+      const { error: joinErr } = await supabase
+        .from('org_members')
+        .insert([{
+          org_id: org.id,
+          user_id: user.id,
+          role: 'member'
+        }]);
+      
+      if (joinErr) throw joinErr;
+
+      await fetchOrgData();
+      setCurrentOrg(org);
+      setShowJoinOrg(false);
+      alert(`Welcome to ${org.name}!`);
+    } catch (err) {
+      console.error('Error joining workspace:', err);
+      alert(err.message || "Failed to join workspace.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Auth Guard: If not logged in, only show AuthForm
@@ -1718,9 +1903,17 @@ export default function App() {
 
       {/* Main Screens */}
       {screen === 'home'     && <HomeScreen navigate={navigate} onAdd={() => setShowCreate(true)} fixes={fixes} categories={categories} />}
-      {screen === 'search'   && <SearchScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} categories={categories} />}
+      {screen === 'search'   && (
+        <SearchScreen 
+          onBack={() => { setScreen('home'); setOcrQuery(''); }} 
+          onSelectFix={setSelectedFix} 
+          fixes={fixes} 
+          categories={categories} 
+          initialQuery={ocrQuery}
+        />
+      )}
       {screen === 'browse'   && <BrowseScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} categories={categories} />}
-      {screen === 'camera'   && <CameraScreen onBack={() => setScreen('home')} />}
+      {screen === 'camera'   && <CameraScreen onBack={() => setScreen('home')} onScan={(text) => { setOcrQuery(text); setScreen('search'); }} />}
       {screen === 'settings' && (
         <SettingsScreen 
           user={user} 
@@ -1729,6 +1922,8 @@ export default function App() {
           theme={theme} 
           onThemeToggle={setTheme} 
           onLogout={handleLogout} 
+          onSwitchOrg={handleSwitchOrg}
+          onJoinOrg={() => setShowJoinOrg(true)}
         />
       )}
 
@@ -1782,6 +1977,33 @@ export default function App() {
           onConfirm={() => handleDeleteFix(fixToDelete.id)}
           onCancel={() => { setShowDeleteConfirm(false); setFixToDelete(null); }}
         />
+      )}
+
+      {/* Join Workspace Overlay */}
+      {showJoinOrg && (
+        <div className="join-overlay">
+          <div className="fade-in join-card">
+            <div className="join-header">
+              <div className="join-icon"><Icon name="Plus" size={24} /></div>
+              <h3>Join Workspace</h3>
+              <p>Enter the workspace ID or slug provided by your company administrator.</p>
+            </div>
+            
+            <input 
+              className="form-input" 
+              placeholder="e.g. acme-corp or UUID" 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleJoinOrg(e.target.value);
+              }}
+              autoFocus
+            />
+            
+            <div className="join-actions">
+              <button className="primary-btn" onClick={(e) => handleJoinOrg(e.target.previousSibling.value)}>JOIN WORKSPACE</button>
+              <button className="secondary-btn" onClick={() => setShowJoinOrg(false)}>CANCEL</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Loading Overlay */}
