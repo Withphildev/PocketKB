@@ -873,6 +873,7 @@ const AuthForm = ({ onAuthSuccess }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState(null);
+  const [message, setMessage]   = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -882,6 +883,7 @@ const AuthForm = ({ onAuthSuccess }) => {
     }
     setLoading(true);
     setError(null);
+    setMessage(null);
 
     try {
       const { data, error } = isLogin
@@ -890,7 +892,28 @@ const AuthForm = ({ onAuthSuccess }) => {
 
       if (error) throw error;
       if (data.session) onAuthSuccess(data.session.user);
-      else if (!isLogin) alert('Check your email for the confirmation link!');
+      else if (!isLogin) setMessage('Check your email for the confirmation link!');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Please enter your email first');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+      if (error) throw error;
+      setMessage('Password reset email sent! Check your inbox.');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -947,19 +970,32 @@ const AuthForm = ({ onAuthSuccess }) => {
             onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-        <div className="form-group" style={{ marginBottom: '0.5rem' }}>
+        <div className="form-group" style={{ marginBottom: isLogin ? '0.25rem' : '0.5rem' }}>
           <label className="form-label">PASSWORD</label>
           <input
             className="form-input"
             type="password"
-            required
+            required={!message} // Not required if just resetting
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
 
+        {isLogin && (
+          <div style={{ textAlign: 'right', marginTop: '-0.5rem', marginBottom: '0.5rem' }}>
+            <button 
+              type="button"
+              onClick={handleForgotPassword}
+              style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', opacity: 0.8 }}
+            >
+              Forgot password?
+            </button>
+          </div>
+        )}
+
         {error && <div className="form-error" style={{ marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
+        {message && <div style={{ color: 'var(--accent)', fontSize: '0.75rem', marginBottom: '1rem', textAlign: 'center', fontWeight: 600 }}>{message}</div>}
 
         <button type="submit" className="primary-btn" disabled={loading}>
           {loading ? 'PROCESSING...' : isLogin ? 'SIGN IN' : 'CREATE ACCOUNT'}
@@ -968,7 +1004,7 @@ const AuthForm = ({ onAuthSuccess }) => {
 
       <div className="auth-footer">
         {isLogin ? "Don't have an account?" : "Already have an account?"}
-        <button onClick={() => setIsLogin(!isLogin)}>{isLogin ? 'Sign up' : 'Log in'}</button>
+        <button onClick={() => { setIsLogin(!isLogin); setError(null); setMessage(null); }}>{isLogin ? 'Sign up' : 'Log in'}</button>
       </div>
     </div>
   );
