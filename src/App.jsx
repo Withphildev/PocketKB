@@ -85,6 +85,12 @@ const Icons = {
   Sun: (p) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
   ),
+  Edit: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+  ),
+  Trash: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+  ),
 };
 
 const Icon = ({ name, size = 24, sw }) => {
@@ -340,7 +346,7 @@ const CategoryCard = ({ cat, count, onClick }) => (
 /* ============================================================
    DETAIL VIEW
    ============================================================ */
-const DetailView = ({ fix, onBack }) => {
+const DetailView = ({ fix, onBack, onEdit, onDeleteTrigger }) => {
   const [done, setDone] = useState({});
   const toggle = (i) => setDone((prev) => ({ ...prev, [i]: !prev[i] }));
 
@@ -359,10 +365,29 @@ const DetailView = ({ fix, onBack }) => {
         <button className="back-btn" onClick={onBack}>
           <Icon name="ChevronLeft" size={22} />
         </button>
-        <h2 style={{ flex: 1, fontSize: '1rem', fontFamily: "'Nunito', sans-serif", fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-primary)', letterSpacing: 0 }}>
+        <h2 style={{ flex: 1, fontSize: '0.9rem', fontFamily: "'Nunito', sans-serif", fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-primary)', letterSpacing: 0, paddingRight: '0.5rem' }}>
           {fix.title}
         </h2>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button 
+            className="action-btn-circle" 
+            onClick={() => onEdit(fix)} 
+            title="Edit Fix"
+            style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Icon name="Edit" size={16} sw={2} />
+          </button>
+          <button 
+            className="action-btn-circle" 
+            onClick={() => onDeleteTrigger(fix)} 
+            title="Delete Fix"
+            style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(248, 113, 113, 0.12)', border: '1px solid rgba(248, 113, 113, 0.2)', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Icon name="Trash" size={16} sw={2} />
+          </button>
+        </div>
       </div>
+# ... (rest of detail view remains same, but onClose onDeleteTrigger called)
       <div className="scroll-area" style={{ padding: '1.25rem' }}>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.15rem' }}>
           {fix.tags.map((t) => <Tag key={t} label={t} />)}
@@ -461,6 +486,52 @@ const CameraScreen = ({ onBack }) => {
 };
 
 /* ============================================================
+   DELETE CONFIRM MODAL
+   ============================================================ */
+const DeleteConfirmModal = ({ fix, onConfirm, onCancel }) => (
+  <div style={{
+    position: 'absolute', inset: 0, background: 'rgba(6,10,16,0.88)',
+    backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', zIndex: 1100, padding: '2rem'
+  }}>
+    <div className="fade-in" style={{
+      background: 'var(--bg-card)', border: '1px solid var(--border)',
+      borderRadius: '1.25rem', padding: '1.75rem', width: '100%',
+      maxWidth: '320px', boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+    }}>
+      <div style={{
+        width: '48px', height: '48px', borderRadius: '14px',
+        background: 'rgba(248, 113, 113, 0.12)', color: '#f87171',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        margin: '0 auto 1.25rem'
+      }}>
+        <Icon name="Trash" size={24} sw={2} />
+      </div>
+      <h3 style={{ textAlign: 'center', fontSize: '1.1rem', marginBottom: '0.75rem', fontFamily: "'Nunito', sans-serif" }}>Delete Fix?</h3>
+      <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1.75rem' }}>
+        Are you sure you want to delete <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>"{fix?.title}"</span>? This action cannot be undone.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <button 
+          className="primary-btn" 
+          onClick={onConfirm}
+          style={{ background: '#f87171', color: 'white', boxShadow: '0 0 16px rgba(248, 113, 113, 0.2)' }}
+        >
+          DELETE FIX
+        </button>
+        <button 
+          className="secondary-btn" 
+          onClick={onCancel}
+          style={{ border: 'none', background: 'transparent' }}
+        >
+          CANCEL
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+/* ============================================================
    LOADING OVERLAY
    ============================================================ */
 const LoadingOverlay = () => (
@@ -477,13 +548,14 @@ const LoadingOverlay = () => (
 /* ============================================================
    CREATE FIX FORM
    ============================================================ */
-const CreateFixForm = ({ onClose, onSave }) => {
-  const [title, setTitle]       = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0].id);
-  const [tagsInput, setTagsInput] = useState('');
-  const [summary, setSummary]   = useState('');
-  const [steps, setSteps]       = useState(['']);
-  const [screenshots, setScreenshots] = useState([]); // array of base64 dataURLs
+const CreateFixForm = ({ onClose, onSave, initialData = null }) => {
+  const [title, setTitle]       = useState(initialData?.title || '');
+  const [category, setCategory] = useState(initialData?.category || CATEGORIES[0].id);
+  const [tagsInput, setTagsInput] = useState(initialData?.tags?.join(', ') || '');
+  const [summary, setSummary]   = useState(initialData?.summary || '');
+  const [steps, setSteps]       = useState(initialData?.steps || ['']);
+  const [existingScreenshots, setExistingScreenshots] = useState(initialData?.screenshots || []);
+  const [newScreenshots, setNewScreenshots] = useState([]); // array of base64 dataURLs
   const [errors, setErrors]     = useState({});
   const fileInputRef = useRef(null);
   const titleRef = useRef(null);
@@ -500,12 +572,13 @@ const CreateFixForm = ({ onClose, onSave }) => {
     const files = Array.from(e.target.files);
     files.forEach((file) => {
       const reader = new FileReader();
-      reader.onload = (ev) => setScreenshots((prev) => [...prev, ev.target.result]);
+      reader.onload = (ev) => setNewScreenshots((prev) => [...prev, ev.target.result]);
       reader.readAsDataURL(file);
     });
     e.target.value = '';
   };
-  const removeScreenshot = (i) => setScreenshots((s) => s.filter((_, idx) => idx !== i));
+  const removeExistingScreenshot = (i) => setExistingScreenshots((s) => s.filter((_, idx) => idx !== i));
+  const removeNewScreenshot = (i) => setNewScreenshots((s) => s.filter((_, idx) => idx !== i));
 
   // Validation & save
   const handleSave = () => {
@@ -521,15 +594,27 @@ const CreateFixForm = ({ onClose, onSave }) => {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    onSave({
+    const fixData = {
       title: title.trim(),
       category,
       tags: tags.length ? tags : [CATEGORIES.find((c) => c.id === category)?.label || 'General'],
       summary: summary.trim(),
       steps: steps.filter((s) => s.trim()),
-      screenshots,
       updatedAgo: 'just now',
-    });
+    };
+
+    if (initialData) {
+      onSave(initialData.id, {
+        ...fixData,
+        existingScreenshots,
+        newScreenshots,
+      });
+    } else {
+      onSave({
+        ...fixData,
+        screenshots: newScreenshots,
+      });
+    }
   };
 
   const selectedCat = CATEGORIES.find((c) => c.id === category);
@@ -542,7 +627,7 @@ const CreateFixForm = ({ onClose, onSave }) => {
           <Icon name="X" size={20} />
         </button>
         <h2 style={{ flex: 1, textAlign: 'center', fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', letterSpacing: 0 }}>
-          NEW FIX
+          {initialData ? 'EDIT FIX' : 'NEW FIX'}
         </h2>
         <button
           onClick={handleSave}
@@ -698,18 +783,19 @@ const CreateFixForm = ({ onClose, onSave }) => {
             <span style={{ fontWeight: 400, opacity: 0.6, marginLeft: '0.4rem' }}>(optional)</span>
           </label>
 
-          {/* Image previews */}
-          {screenshots.length > 0 && (
+          {/* Existing & New Image previews */}
+          {(existingScreenshots.length > 0 || newScreenshots.length > 0) && (
             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-              {screenshots.map((src, i) => (
-                <div key={i} style={{ position: 'relative', display: 'inline-block' }}>
+              {/* Existing */}
+              {existingScreenshots.map((src, i) => (
+                <div key={`idx-${i}`} style={{ position: 'relative', display: 'inline-block' }}>
                   <img
                     src={src}
-                    alt={`Screenshot ${i + 1}`}
+                    alt={`Existing Screenshot ${i + 1}`}
                     style={{ width: '100px', height: '80px', objectFit: 'cover', borderRadius: '0.6rem', border: '1px solid var(--border)' }}
                   />
                   <button
-                    onClick={() => removeScreenshot(i)}
+                    onClick={() => removeExistingScreenshot(i)}
                     style={{
                       position: 'absolute', top: '-6px', right: '-6px',
                       width: '20px', height: '20px', borderRadius: '50%',
@@ -720,6 +806,29 @@ const CreateFixForm = ({ onClose, onSave }) => {
                   >
                     <Icon name="X" size={11} sw={2.5} />
                   </button>
+                </div>
+              ))}
+              {/* New */}
+              {newScreenshots.map((src, i) => (
+                <div key={`new-${i}`} style={{ position: 'relative', display: 'inline-block' }}>
+                  <img
+                    src={src}
+                    alt={`New Screenshot ${i + 1}`}
+                    style={{ width: '100px', height: '80px', objectFit: 'cover', borderRadius: '0.6rem', border: '2px solid var(--accent)' }}
+                  />
+                  <button
+                    onClick={() => removeNewScreenshot(i)}
+                    style={{
+                      position: 'absolute', top: '-6px', right: '-6px',
+                      width: '20px', height: '20px', borderRadius: '50%',
+                      background: '#f87171', border: 'none', color: 'white',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Icon name="X" size={11} sw={2.5} />
+                  </button>
+                  <div style={{ position: 'absolute', bottom: '2px', right: '4px', fontSize: '0.5rem', background: 'var(--accent)', color: 'black', padding: '1px 3px', borderRadius: '2px', fontWeight: 800 }}>NEW</div>
                 </div>
               ))}
             </div>
@@ -1142,6 +1251,9 @@ export default function App() {
   const [error, setError]           = useState(null);
   const [selectedFix, setSelectedFix] = useState(null);
   const [showCreate, setShowCreate]  = useState(false);
+  const [editingFix, setEditingFix]  = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [fixToDelete, setFixToDelete] = useState(null);
   const nextId = useRef(INITIAL_FIXES.length + 1);
 
   const navigate = useCallback((s) => setScreen(s), []);
@@ -1268,6 +1380,79 @@ export default function App() {
     }
   }, [fetchFixes]);
 
+  const handleUpdateFix = useCallback(async (fixId, fixData) => {
+    setLoading(true);
+    try {
+      let finalScreenshotUrls = [...fixData.existingScreenshots]; // Start with existing
+
+      // 1. Upload NEW screenshots if any
+      if (supabase && fixData.newScreenshots && fixData.newScreenshots.length > 0) {
+        for (let i = 0; i < fixData.newScreenshots.length; i++) {
+          const blob = dataURLtoBlob(fixData.newScreenshots[i]);
+          const fileName = `${Date.now()}_upd_${i}.png`;
+          const { error: storageError } = await supabase.storage
+            .from('screenshots')
+            .upload(fileName, blob);
+          
+          if (storageError) throw storageError;
+          
+          const { data: publicUrlData } = supabase.storage
+            .from('screenshots')
+            .getPublicUrl(fileName);
+          
+          finalScreenshotUrls.push(publicUrlData.publicUrl);
+        }
+      }
+
+      const updatedFix = {
+        title: fixData.title,
+        category: fixData.category,
+        tags: fixData.tags,
+        summary: fixData.summary,
+        steps: fixData.steps,
+        screenshots: finalScreenshotUrls,
+        updated_ago: 'just now',
+      };
+
+      if (supabase) {
+        const { error } = await supabase.from('fixes').update(updatedFix).eq('id', fixId);
+        if (error) throw error;
+        await fetchFixes();
+      } else {
+        setFixes((prev) => prev.map(f => f.id === fixId ? { ...f, ...updatedFix } : f));
+      }
+
+      setShowCreate(false);
+      setSelectedFix(null); // Close detail view too
+    } catch (err) {
+      console.error('Error updating fix:', err);
+      alert('Failed to update fix.');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchFixes]);
+
+  const handleDeleteFix = useCallback(async (fixId) => {
+    setLoading(true);
+    try {
+      if (supabase) {
+        const { error } = await supabase.from('fixes').delete().eq('id', fixId);
+        if (error) throw error;
+        await fetchFixes();
+      } else {
+        setFixes((prev) => prev.filter(f => f.id !== fixId));
+      }
+      setSelectedFix(null);
+      setShowDeleteConfirm(false);
+      setFixToDelete(null);
+    } catch (err) {
+      console.error('Error deleting fix:', err);
+      alert('Failed to delete fix.');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchFixes]);
+
   const handleLogout = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -1336,10 +1521,32 @@ export default function App() {
       )}
 
       {/* Detail overlay */}
-      {selectedFix && <DetailView fix={selectedFix} onBack={() => setSelectedFix(null)} />}
+      {selectedFix && (
+        <DetailView 
+          fix={selectedFix} 
+          onBack={() => setSelectedFix(null)} 
+          onEdit={(fix) => { setEditingFix(fix); setShowCreate(true); }}
+          onDeleteTrigger={(fix) => { setFixToDelete(fix); setShowDeleteConfirm(true); }}
+        />
+      )}
 
-      {/* Create Fix overlay */}
-      {showCreate && <CreateFixForm onClose={() => setShowCreate(false)} onSave={handleAddFix} />}
+      {/* Create / Edit Fix overlay */}
+      {showCreate && (
+        <CreateFixForm 
+          initialData={editingFix}
+          onClose={() => { setShowCreate(false); setEditingFix(null); }} 
+          onSave={editingFix ? handleUpdateFix : handleAddFix} 
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <DeleteConfirmModal 
+          fix={fixToDelete}
+          onConfirm={() => handleDeleteFix(fixToDelete.id)}
+          onCancel={() => { setShowDeleteConfirm(false); setFixToDelete(null); }}
+        />
+      )}
 
       {/* Loading Overlay */}
       {loading && <LoadingOverlay />}

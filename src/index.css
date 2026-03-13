@@ -1042,3 +1042,29 @@ input {
 .divider:not(:empty)::after {
   margin-left: 1rem;
 }
+/* Action Button Circle (Edit/Delete) */
+.action-btn-circle {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.action-btn-circle:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.action-btn-circle:active {
+  transform: translateY(0);
+  filter: brightness(0.9);
+}
+
+/* Form refinement */
+.form-group textarea {
+  line-height: 1.5;
+}
+
+.form-group .step-num {
+  font-size: 0.7rem;
+  font-weight: 800;
+}
