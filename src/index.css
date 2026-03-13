@@ -23,8 +23,9 @@
   --accent: #00e5ff;
   --accent-glow: rgba(0, 229, 255, 0.35);
   --accent-dim: rgba(0, 229, 255, 0.08);
+  --scanline-color: rgba(0, 229, 255, 0.012);
 
-  /* Category Colors */
+  /* Category Colors (Maintain brightness in both themes) */
   --cat-networking: #00d2ff;
   --cat-os: #4ade80;
   --cat-hardware: #fb923c;
@@ -34,6 +35,26 @@
   --cat-web: #38bdf8;
   --cat-cloud: #2dd4bf;
   --cat-printing: #fb7185;
+}
+
+body.light-theme {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+
+  --border: #e2e8f0;
+  --border-hover: rgba(0, 184, 212, 0.3);
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  --accent: #00b8d4;
+  --accent-glow: rgba(0, 184, 212, 0.15);
+  --accent-dim: rgba(0, 184, 212, 0.05);
+  --scanline-color: rgba(0, 0, 0, 0.005);
 }
 
 /* ---- Reset ---- */
@@ -94,8 +115,8 @@ input {
     0deg,
     transparent,
     transparent 2px,
-    rgba(0, 229, 255, 0.012) 2px,
-    rgba(0, 229, 255, 0.012) 4px
+    var(--scanline-color) 2px,
+    var(--scanline-color) 4px
   );
   pointer-events: none;
   z-index: 999;
@@ -754,4 +775,270 @@ input {
 @keyframes pulse {
   from { opacity: 0.4; transform: scale(0.9); }
   to { opacity: 1; transform: scale(1.1); }
+}
+
+/* ---- Auth Screen ---- */
+.auth-container {
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: center;
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.auth-header h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+}
+
+.auth-header p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.auth-toggle {
+  display: flex;
+  background: var(--bg-tertiary);
+  padding: 0.35rem;
+  border-radius: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.auth-toggle button {
+  flex: 1;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.65rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.auth-toggle button.active {
+  background: var(--bg-card);
+  color: var(--accent);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.auth-footer {
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.auth-footer button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-weight: 700;
+  margin-left: 0.4rem;
+}
+
+/* ---- Settings Screen ---- */
+.settings-section {
+  margin-bottom: 2rem;
+}
+
+.settings-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+}
+
+.settings-item:last-child {
+  border-bottom: none;
+}
+
+.settings-item:active {
+  background: var(--bg-card-hover);
+}
+
+.settings-item-label {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.settings-item-value {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  border: 2px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.profile-info h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.profile-info p {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.theme-switch {
+  display: flex;
+  background: var(--bg-tertiary);
+  padding: 0.25rem;
+  border-radius: 2rem;
+  width: auto;
+}
+
+.theme-switch button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.theme-switch button.active {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.primary-btn {
+  width: 100%;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 0.85rem;
+  padding: 1rem;
+  font-weight: 750;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+}
+
+.primary-btn:active {
+  transform: scale(0.98);
+}
+
+.secondary-btn {
+  width: 100%;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  padding: 0.85rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Google Button */
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem;
+  background: white;
+  color: #1f2937;
+  border-radius: 0.75rem;
+  border: none;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-top: 0.5rem;
+}
+
+.google-btn:hover {
+  background: #f9fafb;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.google-btn:active {
+  transform: translateY(0);
+}
+
+.google-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.1em;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(251, 251, 254, 0.1);
+}
+
+.divider:not(:empty)::before {
+  margin-right: 1rem;
+}
+
+.divider:not(:empty)::after {
+  margin-left: 1rem;
 }

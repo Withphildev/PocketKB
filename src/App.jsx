@@ -73,6 +73,18 @@ const Icons = {
   Printer: (p) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
   ),
+  User: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+  ),
+  Settings: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+  ),
+  Moon: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+  ),
+  Sun: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+  ),
 };
 
 const Icon = ({ name, size = 24, sw }) => {
@@ -744,6 +756,195 @@ const CreateFixForm = ({ onClose, onSave }) => {
 };
 
 /* ============================================================
+   AUTH FORM
+   ============================================================ */
+const AuthForm = ({ onAuthSuccess }) => {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!supabase) {
+      alert('Supabase not configured');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { data, error } = isLogin
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signUp({ email, password });
+
+      if (error) throw error;
+      if (data.session) onAuthSuccess(data.session.user);
+      else if (!isLogin) alert('Check your email for the confirmation link!');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    if (!supabase) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="auth-container fade-in">
+      <div className="auth-header">
+        <h1>Pocket<span style={{ color: 'var(--accent)' }}>KB</span></h1>
+        <p>{isLogin ? 'Sign in to access your knowledge base' : 'Create an account to start saving fixes'}</p>
+      </div>
+
+      {/* Google Login Button */}
+      <button className="google-btn" onClick={handleGoogleLogin} disabled={loading}>
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="google-icon" />
+        {loading ? 'CONNECTING...' : 'Continue with Google'}
+      </button>
+
+      <div className="divider">OR</div>
+
+      <div className="auth-toggle">
+        <button className={isLogin ? 'active' : ''} onClick={() => setIsLogin(true)}>Login</button>
+        <button className={!isLogin ? 'active' : ''} onClick={() => setIsLogin(false)}>Sign Up</button>
+      </div>
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">EMAIL</label>
+          <input
+            className="form-input"
+            type="email"
+            required
+            placeholder="technician@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="form-group" style={{ marginBottom: '0.5rem' }}>
+          <label className="form-label">PASSWORD</label>
+          <input
+            className="form-input"
+            type="password"
+            required
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+
+        {error && <div className="form-error" style={{ marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
+
+        <button type="submit" className="primary-btn" disabled={loading}>
+          {loading ? 'PROCESSING...' : isLogin ? 'SIGN IN' : 'CREATE ACCOUNT'}
+        </button>
+      </form>
+
+      <div className="auth-footer">
+        {isLogin ? "Don't have an account?" : "Already have an account?"}
+        <button onClick={() => setIsLogin(!isLogin)}>{isLogin ? 'Sign up' : 'Log in'}</button>
+      </div>
+    </div>
+  );
+};
+
+/* ============================================================
+   SETTINGS SCREEN
+   ============================================================ */
+const SettingsScreen = ({ user, theme, onThemeToggle, onLogout }) => {
+  return (
+    <div className="fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div className="top-bar">
+        <h2 style={{ flex: 1, letterSpacing: '0.15em' }}>SETTINGS</h2>
+      </div>
+
+      <div className="scroll-area" style={{ padding: '1.25rem' }}>
+        {/* Profile */}
+        <div className="profile-header">
+          <div className="profile-avatar">
+            <Icon name="User" size={32} />
+          </div>
+          <div className="profile-info">
+            <h3>{user?.email?.split('@')[0] || 'Technician'}</h3>
+            <p>{user?.email || 'Not signed in'}</p>
+          </div>
+        </div>
+
+        {/* Preferences */}
+        <div className="settings-section">
+          <div className="mono" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.1em' }}>PREFERENCES</div>
+          <div className="settings-group">
+            <div className="settings-item">
+              <Icon name={theme === 'dark' ? 'Moon' : 'Sun'} size={18} color="var(--accent)" />
+              <div className="settings-item-label">Appearance</div>
+              <div className="theme-switch">
+                <button 
+                  className={theme === 'dark' ? 'active' : ''} 
+                  onClick={() => onThemeToggle('dark')}
+                >
+                  <Icon name="Moon" size={16} />
+                </button>
+                <button 
+                  className={theme === 'light' ? 'active' : ''} 
+                  onClick={() => onThemeToggle('light')}
+                >
+                  <Icon name="Sun" size={16} />
+                </button>
+              </div>
+            </div>
+            <div className="settings-item">
+              <Icon name="Globe" size={18} color="var(--text-muted)" />
+              <div className="settings-item-label">Language</div>
+              <div className="settings-item-value">English</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Account Info */}
+        <div className="settings-section">
+          <div className="mono" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.1em' }}>ACCOUNT</div>
+          <div className="settings-group">
+            <div className="settings-item">
+              <div className="settings-item-label">Supabase Connection</div>
+              <div className="settings-item-value" style={{ color: supabase ? '#4ade80' : '#f87171' }}>
+                {supabase ? 'CONNECTED' : 'DISCONNECTED'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: '2.5rem' }}>
+          <button className="secondary-btn" onClick={onLogout} style={{ color: '#f87171', borderColor: 'rgba(248, 113, 113, 0.2)' }}>
+            <Icon name="X" size={16} /> SIGN OUT
+          </button>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '2rem', paddingBottom: '2rem' }}>
+          <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>PocketKB v1.1.0 • Stable Build</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ============================================================
    SCREEN: HOME
    ============================================================ */
 const HomeScreen = ({ navigate, onAdd }) => (
@@ -933,8 +1134,10 @@ const BrowseScreen = ({ onBack, onSelectFix, fixes }) => {
    MAIN APPLICATION
    ============================================================ */
 export default function App() {
+  const [user, setUser]             = useState(null);
+  const [theme, setTheme]           = useState(localStorage.getItem('kb-theme') || 'dark');
   const [screen, setScreen]         = useState('home');
-  const [fixes, setFixes]           = useState(INITIAL_FIXES); // Fallback to initial fixes if Supabase not ready
+  const [fixes, setFixes]           = useState(INITIAL_FIXES);
   const [loading, setLoading]       = useState(false);
   const [error, setError]           = useState(null);
   const [selectedFix, setSelectedFix] = useState(null);
@@ -942,6 +1145,30 @@ export default function App() {
   const nextId = useRef(INITIAL_FIXES.length + 1);
 
   const navigate = useCallback((s) => setScreen(s), []);
+
+  // Auth Listener
+  useEffect(() => {
+    if (!supabase) return;
+    
+    // Check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null);
+    });
+
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Theme Logic
+  useEffect(() => {
+    document.body.classList.remove('light-theme');
+    if (theme === 'light') document.body.classList.add('light-theme');
+    localStorage.setItem('kb-theme', theme);
+  }, [theme]);
 
   // Fetch fixes on mount
   const fetchFixes = useCallback(async () => {
@@ -1041,6 +1268,22 @@ export default function App() {
     }
   }, [fetchFixes]);
 
+  const handleLogout = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    setScreen('home');
+  };
+
+  // Auth Guard: If not logged in, only show AuthForm
+  if (!user && supabase) {
+    return (
+      <div className="app-shell">
+        <AuthForm onAuthSuccess={(u) => setUser(u)} />
+        {loading && <LoadingOverlay />}
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       {/* Error Banner */}
@@ -1055,19 +1298,29 @@ export default function App() {
           {error}
         </div>
       )}
-      {screen === 'home'   && <HomeScreen navigate={navigate} onAdd={() => setShowCreate(true)} />}
-      {screen === 'search' && <SearchScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} />}
-      {screen === 'browse' && <BrowseScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} />}
-      {screen === 'camera' && <CameraScreen onBack={() => setScreen('home')} />}
+
+      {/* Main Screens */}
+      {screen === 'home'     && <HomeScreen navigate={navigate} onAdd={() => setShowCreate(true)} />}
+      {screen === 'search'   && <SearchScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} />}
+      {screen === 'browse'   && <BrowseScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} />}
+      {screen === 'camera'   && <CameraScreen onBack={() => setScreen('home')} />}
+      {screen === 'settings' && (
+        <SettingsScreen 
+          user={user} 
+          theme={theme} 
+          onThemeToggle={setTheme} 
+          onLogout={handleLogout} 
+        />
+      )}
 
       {/* Bottom nav — hidden on camera */}
       {screen !== 'camera' && (
         <nav className="bottom-nav">
           {[
-            { id: 'home',   icon: 'Home',   label: 'Home' },
-            { id: 'search', icon: 'Search', label: 'Search' },
-            { id: 'browse', icon: 'Folder', label: 'Browse' },
-            { id: 'camera', icon: 'Camera', label: 'Camera' },
+            { id: 'home',     icon: 'Home',     label: 'Home' },
+            { id: 'search',   icon: 'Search',   label: 'Search' },
+            { id: 'browse',   icon: 'Folder',   label: 'Browse' },
+            { id: 'settings', icon: 'Settings', label: 'Settings' },
           ].map((item) => (
             <button
               key={item.id}
