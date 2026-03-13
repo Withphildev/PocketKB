@@ -1139,7 +1139,11 @@ const AuthForm = ({ onAuthSuccess }) => {
 /* ============================================================
    SETTINGS SCREEN
    ============================================================ */
-const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, onLogout, onSwitchOrg, onJoinOrg }) => {
+const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, onLogout, onSwitchOrg, onJoinOrg, onManageMembers, pendingMembers, onApproveMember, onRejectMember }) => {
+  const currentRole = memberships.find(m => m.org_id === currentOrg?.id)?.role;
+  const isAdmin = currentRole === 'owner' || currentRole === 'admin';
+  const pendingCount = (pendingMembers || []).length;
+
   return (
     <div className="fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="top-bar">
@@ -1173,16 +1177,24 @@ const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, o
           <div className="workspace-list">
             {memberships.map((m) => {
               const isActive = currentOrg?.id === m.org.id;
+              const isPending = m.status === 'pending';
               return (
-                <div key={m.org.id} className={`workspace-item${isActive ? ' active' : ''}`} onClick={() => !isActive && onSwitchOrg(m.org)}>
+                <div 
+                  key={m.org.id} 
+                  className={`workspace-item${isActive ? ' active' : ''}${isPending ? ' pending' : ''}`} 
+                  onClick={() => !isActive && !isPending && onSwitchOrg(m.org)}
+                  style={isPending ? { cursor: 'default', opacity: 0.7 } : {}}
+                >
                   <div className="workspace-icon">
-                    <Icon name="Home" size={18} color={isActive ? 'var(--bg-primary)' : 'var(--accent)'} />
+                    <Icon name="Home" size={18} color={isPending ? '#f59e0b' : isActive ? 'var(--bg-primary)' : 'var(--accent)'} />
                   </div>
                   <div style={{ flex: 1 }}>
                     <div className="workspace-name">{m.org.name}</div>
                     <div className="workspace-role">{m.role.toUpperCase()}</div>
                   </div>
-                  {isActive ? (
+                  {isPending ? (
+                    <div className="pending-badge">PENDING</div>
+                  ) : isActive ? (
                     <div className="active-badge">ACTIVE</div>
                   ) : (
                     <div className="switch-hint">TAP TO SWITCH</div>
@@ -1192,6 +1204,47 @@ const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, o
             })}
           </div>
         </div>
+
+        {/* Admin: Pending Members Panel */}
+        {isAdmin && (
+          <div className="settings-section">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <div className="mono" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.1em' }}>MEMBERS</div>
+              {pendingCount > 0 && (
+                <div className="pending-count-badge">{pendingCount} pending</div>
+              )}
+            </div>
+            {pendingCount > 0 ? (
+              <div className="members-list">
+                {pendingMembers.map((pm) => (
+                  <div key={pm.id} className="member-card pending">
+                    <div className="member-info">
+                      <div className="member-avatar">
+                        <Icon name="User" size={16} color="#f59e0b" />
+                      </div>
+                      <div>
+                        <div className="member-name">{pm.user_email || pm.user_id.substring(0, 8) + '...'}</div>
+                        <div className="member-status">Awaiting approval</div>
+                      </div>
+                    </div>
+                    <div className="member-actions">
+                      <button className="approve-btn" onClick={() => onApproveMember(pm)}>
+                        <Icon name="Check" size={14} sw={3} /> Approve
+                      </button>
+                      <button className="reject-btn" onClick={() => onRejectMember(pm)}>
+                        <Icon name="X" size={14} sw={3} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '1.5rem 1rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                No pending requests
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Preferences */}
         <div className="settings-section">
@@ -1243,7 +1296,7 @@ const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, o
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '2rem', paddingBottom: '2rem' }}>
-          <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>PocketKB v1.1.0 • Stable Build</p>
+          <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono, monospace' }}>PocketKB v1.2.0 • Stable Build</p>
         </div>
       </div>
     </div>
@@ -1490,6 +1543,7 @@ export default function App() {
   const [fixToDelete, setFixToDelete] = useState(null);
   const [ocrQuery, setOcrQuery] = useState(''); // Text scanned from camera/upload
   const [showJoinOrg, setShowJoinOrg] = useState(false);
+  const [pendingMembers, setPendingMembers] = useState([]);
 
   const navigate = (s) => setScreen(s);
 
@@ -1521,10 +1575,11 @@ export default function App() {
       if (error) throw error;
       setMemberships(data || []);
       
-      // If we don't have a current org yet, or the current org isn't in the list anymore
-      if (data && data.length > 0) {
-        if (!currentOrg || !data.some(m => m.org_id === currentOrg.id)) {
-          setCurrentOrg(data[0].org);
+      // Only auto-switch to ACTIVE memberships
+      const activeMembers = (data || []).filter(m => m.status === 'active');
+      if (activeMembers.length > 0) {
+        if (!currentOrg || !activeMembers.some(m => m.org_id === currentOrg.id)) {
+          setCurrentOrg(activeMembers[0].org);
         }
       }
     } catch (err) {
@@ -1853,26 +1908,96 @@ export default function App() {
         return;
       }
 
-      // Join the org
+      // Join the org with pending status (default from DB)
       const { error: joinErr } = await supabase
         .from('org_members')
         .insert([{
           org_id: org.id,
           user_id: user.id,
-          role: 'member'
+          role: 'member',
+          status: 'pending'
         }]);
       
       if (joinErr) throw joinErr;
 
       await fetchOrgData();
-      setCurrentOrg(org);
       setShowJoinOrg(false);
-      alert(`Welcome to ${org.name}!`);
+      alert(`Request sent to join ${org.name}! An admin will review your request.`);
     } catch (err) {
       console.error('Error joining workspace:', err);
       alert(err.message || "Failed to join workspace.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch pending members for admin panel
+  const fetchPendingMembers = useCallback(async () => {
+    if (!currentOrg || !supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('org_members')
+        .select('*')
+        .eq('org_id', currentOrg.id)
+        .eq('status', 'pending');
+      
+      if (error) throw error;
+      
+      // Try to enrich with profile data
+      const enriched = await Promise.all((data || []).map(async (m) => {
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('email, display_name')
+            .eq('id', m.user_id)
+            .maybeSingle();
+          return { ...m, user_email: profile?.email || profile?.display_name || null };
+        } catch {
+          return { ...m, user_email: null };
+        }
+      }));
+      setPendingMembers(enriched);
+    } catch (err) {
+      console.error('Error fetching pending members:', err);
+      setPendingMembers([]);
+    }
+  }, [currentOrg]);
+
+  useEffect(() => {
+    fetchPendingMembers();
+  }, [fetchPendingMembers]);
+
+  const handleApproveMember = async (member) => {
+    if (!supabase) return;
+    try {
+      const { error } = await supabase
+        .from('org_members')
+        .update({ status: 'active' })
+        .eq('id', member.id);
+      
+      if (error) throw error;
+      alert(`Member approved!`);
+      await fetchPendingMembers();
+    } catch (err) {
+      console.error('Error approving member:', err);
+      alert('Failed to approve member.');
+    }
+  };
+
+  const handleRejectMember = async (member) => {
+    if (!supabase) return;
+    try {
+      const { error } = await supabase
+        .from('org_members')
+        .delete()
+        .eq('id', member.id);
+      
+      if (error) throw error;
+      alert(`Member rejected.`);
+      await fetchPendingMembers();
+    } catch (err) {
+      console.error('Error rejecting member:', err);
+      alert('Failed to reject member.');
     }
   };
 
@@ -1924,6 +2049,9 @@ export default function App() {
           onLogout={handleLogout} 
           onSwitchOrg={handleSwitchOrg}
           onJoinOrg={() => setShowJoinOrg(true)}
+          pendingMembers={pendingMembers}
+          onApproveMember={handleApproveMember}
+          onRejectMember={handleRejectMember}
         />
       )}
 
