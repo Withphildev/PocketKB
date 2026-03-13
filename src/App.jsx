@@ -101,17 +101,21 @@ const Icon = ({ name, size = 24, sw }) => {
 /* ============================================================
    DATA MODEL
    ============================================================ */
-const CATEGORIES = [
-  { id: 'networking',      label: 'Networking',        icon: 'Wifi',    color: '#00d2ff' },
-  { id: 'os',              label: 'Operating Systems', icon: 'Monitor', color: '#4ade80' },
-  { id: 'hardware',        label: 'Hardware',          icon: 'Server',  color: '#fb923c' },
-  { id: 'security',        label: 'Security',          icon: 'Shield',  color: '#f87171' },
-  { id: 'activedirectory', label: 'Active Directory',  icon: 'Users',   color: '#c084fc' },
-  { id: 'email',           label: 'Email & SMTP',      icon: 'Mail',    color: '#fbbf24' },
-  { id: 'web',             label: 'Web Services',      icon: 'Globe',   color: '#38bdf8' },
-  { id: 'cloud',           label: 'Cloud & SaaS',      icon: 'Cloud',   color: '#2dd4bf' },
-  { id: 'printing',        label: 'Printing',          icon: 'Printer', color: '#fb7185' },
-];
+// Categories from DB will replace this constant in logic, but keeping as fallback for iconography
+const CATEGORY_MAP = {
+  networking: { label: 'Networking', icon: 'Wifi', color: '#00d2ff' },
+  os: { label: 'Operating Systems', icon: 'Monitor', color: '#4ade80' },
+  hardware: { label: 'Hardware', icon: 'Server', color: '#fb923c' },
+  security: { label: 'Security', icon: 'Shield', color: '#f87171' },
+  activedirectory: { label: 'Active Directory', icon: 'Users', color: '#c084fc' },
+  email: { label: 'Email & SMTP', icon: 'Mail', color: '#fbbf24' },
+  web: { label: 'Web Services', icon: 'Globe', color: '#38bdf8' },
+  cloud: { label: 'Cloud & SaaS', icon: 'Cloud', color: '#2dd4bf' },
+  printing: { label: 'Printing', icon: 'Printer', color: '#fb7185' },
+  software: { label: 'Software', icon: 'Code', color: '#10b981' },
+  vpn: { label: 'VPN', icon: 'Shield', color: '#ef4444' },
+  mobile: { label: 'Mobile', icon: 'Smartphone', color: '#ec4899' },
+};
 
 const INITIAL_FIXES = [
   {
@@ -291,8 +295,9 @@ const INITIAL_FIXES = [
    ============================================================ */
 const tagColor = (tag) => {
   const lower = tag.toLowerCase();
-  for (const cat of CATEGORIES) {
-    if (cat.label.toLowerCase().includes(lower) || cat.id.includes(lower)) return cat.color;
+  for (const catKey in CATEGORY_MAP) {
+    const cat = CATEGORY_MAP[catKey];
+    if (cat.label.toLowerCase().includes(lower) || catKey.includes(lower)) return cat.color;
   }
   const map = {
     windows: '#4ade80', linux: '#fb923c', nginx: '#38bdf8',
@@ -307,6 +312,7 @@ const tagColor = (tag) => {
    ============================================================ */
 
 const Tag = ({ label }) => {
+  const isNetworking = label.toLowerCase() === 'vpn' || label.toLowerCase() === 'dns';
   const c = tagColor(label);
   return (
     <span className="tag" style={{ color: c, background: `${c}12`, border: `1px solid ${c}25` }}>
@@ -315,43 +321,69 @@ const Tag = ({ label }) => {
   );
 };
 
-const FixCard = ({ fix, index, onClick }) => (
-  <div className="card fix-card" onClick={onClick}>
-    <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
-      <div className="fix-num">{index}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="fix-title">{fix.title}</div>
-        <div className="fix-summary">{fix.summary}</div>
-        <div className="fix-tags">
-          {fix.tags.map((t) => <Tag key={t} label={t} />)}
+const FixCard = ({ fix, index, onClick, categories }) => {
+  const cat = (categories || []).find(c => c.id === fix.category_id);
+  const iconInfo = CATEGORY_MAP[cat?.name.toLowerCase()] || { icon: 'Folder', color: 'var(--accent)' };
+  const c = iconInfo.color;
+  return (
+    <div className="card fix-card" onClick={onClick}>
+      <div className="card-header">
+        <div className="card-cat" style={{ background: `${c}15`, color: c }}>
+          <Icon name={iconInfo.icon} size={14} sw={2.5} />
+          {cat?.name || 'Uncategorized'}
+        </div>
+        <div className="card-date">#0{index}</div>
+      </div>
+      <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="fix-title">{fix.title}</div>
+          <div className="fix-summary">{fix.summary}</div>
+          <div className="fix-tags">
+            {fix.tags.map((t) => <Tag key={t} label={t} />)}
+          </div>
         </div>
       </div>
     </div>
+  );
+};
+
+const FixList = ({ fixes, onSelect, categories }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    {fixes.map((fix, i) => (
+      <FixCard key={fix.id} fix={fix} index={i + 1} onClick={() => onSelect(fix)} categories={categories} />
+    ))}
   </div>
 );
 
-const CategoryCard = ({ cat, count, onClick }) => (
-  <div className="cat-card" onClick={onClick}>
-    <div
-      className="cat-icon"
-      style={{ background: `${cat.color}15`, color: cat.color, boxShadow: `0 0 12px ${cat.color}18` }}
-    >
-      <Icon name={cat.icon} size={22} sw={2.5} />
+const CategoryCard = ({ cat, count, onClick }) => {
+  const iconInfo = CATEGORY_MAP[cat.name.toLowerCase()] || { icon: 'Folder', color: 'var(--accent)' };
+  
+  return (
+    <div className="cat-card" onClick={onClick}>
+      <div
+        className="cat-icon"
+        style={{ background: `${iconInfo.color}15`, color: iconInfo.color, boxShadow: `0 0 12px ${iconInfo.color}18` }}
+      >
+        <Icon name={iconInfo.icon} size={22} sw={2.5} />
+      </div>
+      <div className="cat-name">{cat.name}</div>
+      <div className="cat-count">{count} {count === 1 ? 'fix' : 'fixes'}</div>
     </div>
-    <div className="cat-name">{cat.label}</div>
-    <div className="cat-count">{count} {count === 1 ? 'fix' : 'fixes'}</div>
-  </div>
-);
+  );
+};
 
 /* ============================================================
    DETAIL VIEW
    ============================================================ */
-const DetailView = ({ fix, onBack, onEdit, onDeleteTrigger }) => {
+const DetailView = ({ fix, onBack, onEdit, onDeleteTrigger, categories }) => {
   const [done, setDone] = useState({});
   const toggle = (i) => setDone((prev) => ({ ...prev, [i]: !prev[i] }));
 
+  const cat = (categories || []).find(c => c.id === fix.category_id);
+  const iconInfo = CATEGORY_MAP[cat?.name.toLowerCase()] || { icon: 'Folder', color: 'var(--accent)' };
+
   const renderStep = (text) =>
-    text.split(/(`.+?`)/g).map((part, idx) =>
+    (text || '').split(/(\`.+?\`)/g).map((part, idx) =>
       part.startsWith('`') && part.endsWith('`') ? (
         <code key={idx}>{part.slice(1, -1)}</code>
       ) : (
@@ -387,25 +419,29 @@ const DetailView = ({ fix, onBack, onEdit, onDeleteTrigger }) => {
           </button>
         </div>
       </div>
-# ... (rest of detail view remains same, but onClose onDeleteTrigger called)
+
       <div className="scroll-area" style={{ padding: '1.25rem' }}>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.15rem' }}>
-          {fix.tags.map((t) => <Tag key={t} label={t} />)}
+          {/* Category Pill */}
+          <span className="tag-pill" style={{ borderColor: iconInfo.color + '44', color: iconInfo.color, background: iconInfo.color + '11' }}>
+            <Icon name={iconInfo.icon} size={10} sw={3} /> {cat?.name || 'Uncategorized'}
+          </span>
+          {(fix.tags || []).map((t) => <Tag key={t} label={t} />)}
         </div>
         <div className="detail-summary">{fix.summary}</div>
 
-        {/* Error screenshots (if any) */}
-        {fix.screenshots && fix.screenshots.length > 0 && (
+        {/* Error attachments (if any) */}
+        {fix.attachments && fix.attachments.length > 0 && (
           <div style={{ marginBottom: '1.75rem' }}>
             <div className="steps-header" style={{ marginBottom: '0.75rem' }}>
               <Icon name="Image" size={14} sw={2} /> ERROR SCREENSHOTS
             </div>
             <div style={{ display: 'flex', gap: '0.65rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-              {fix.screenshots.map((src, i) => (
+              {fix.attachments.map((att, i) => (
                 <img
                   key={i}
-                  src={src}
-                  alt={`Screenshot ${i + 1}`}
+                  src={att.file_path}
+                  alt={att.file_name}
                   style={{
                     height: '140px',
                     borderRadius: '0.65rem',
@@ -548,9 +584,9 @@ const LoadingOverlay = () => (
 /* ============================================================
    CREATE FIX FORM
    ============================================================ */
-const CreateFixForm = ({ onClose, onSave, initialData = null }) => {
+const CreateFixForm = ({ onClose, onSave, categories, initialData = null }) => {
   const [title, setTitle]       = useState(initialData?.title || '');
-  const [category, setCategory] = useState(initialData?.category || CATEGORIES[0].id);
+  const [category, setCategory] = useState(initialData?.category || categories[0]?.id || '');
   const [tagsInput, setTagsInput] = useState(initialData?.tags?.join(', ') || '');
   const [summary, setSummary]   = useState(initialData?.summary || '');
   const [steps, setSteps]       = useState(initialData?.steps || ['']);
@@ -596,11 +632,10 @@ const CreateFixForm = ({ onClose, onSave, initialData = null }) => {
 
     const fixData = {
       title: title.trim(),
-      category,
-      tags: tags.length ? tags : [CATEGORIES.find((c) => c.id === category)?.label || 'General'],
+      category: category,
+      tags: tags.length ? tags : ['General'],
       summary: summary.trim(),
       steps: steps.filter((s) => s.trim()),
-      updatedAgo: 'just now',
     };
 
     if (initialData) {
@@ -617,7 +652,7 @@ const CreateFixForm = ({ onClose, onSave, initialData = null }) => {
     }
   };
 
-  const selectedCat = CATEGORIES.find((c) => c.id === category);
+  const selectedCat = categories.find((c) => c.id === category);
 
   return (
     <div className="detail-overlay">
@@ -668,30 +703,34 @@ const CreateFixForm = ({ onClose, onSave, initialData = null }) => {
         <div className="form-group">
           <label className="form-label">CATEGORY</label>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setCategory(cat.id)}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  padding: '0.65rem 0.3rem',
-                  borderRadius: '0.75rem',
-                  border: `1.5px solid ${category === cat.id ? cat.color : 'var(--border)'}`,
-                  background: category === cat.id ? `${cat.color}12` : 'var(--bg-card)',
-                  color: category === cat.id ? cat.color : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  fontSize: '0.62rem',
-                  fontWeight: 700,
-                }}
-              >
-                <Icon name={cat.icon} size={18} sw={category === cat.id ? 2.5 : 1.8} />
-                <span style={{ lineHeight: 1.2, textAlign: 'center' }}>{cat.label}</span>
-              </button>
-            ))}
+            {categories.map((cat) => {
+              const iconInfo = CATEGORY_MAP[cat.name.toLowerCase()] || { icon: 'Folder', color: 'var(--accent)' };
+              const isActive = category === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setCategory(cat.id)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.65rem 0.3rem',
+                    borderRadius: '0.75rem',
+                    border: `1.5px solid ${isActive ? iconInfo.color : 'var(--border)'}`,
+                    background: isActive ? `${iconInfo.color}12` : 'var(--bg-card)',
+                    color: isActive ? iconInfo.color : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    fontSize: '0.62rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  <Icon name={iconInfo.icon} size={18} sw={isActive ? 2.5 : 1.8} />
+                  <span style={{ lineHeight: 1.2, textAlign: 'center' }}>{cat.name}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -1013,7 +1052,7 @@ const AuthForm = ({ onAuthSuccess }) => {
 /* ============================================================
    SETTINGS SCREEN
    ============================================================ */
-const SettingsScreen = ({ user, theme, onThemeToggle, onLogout }) => {
+const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, onLogout }) => {
   return (
     <div className="fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="top-bar">
@@ -1029,6 +1068,18 @@ const SettingsScreen = ({ user, theme, onThemeToggle, onLogout }) => {
           <div className="profile-info">
             <h3>{user?.email?.split('@')[0] || 'Technician'}</h3>
             <p>{user?.email || 'Not signed in'}</p>
+          </div>
+        </div>
+
+        {/* Current Org */}
+        <div className="settings-section">
+          <div className="mono" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.1em' }}>WORKSPACE</div>
+          <div className="settings-group">
+            <div className="settings-item">
+              <Icon name="Home" size={18} color="var(--accent)" />
+              <div className="settings-item-label">{currentOrg?.name || 'Loading organization...'}</div>
+              <div className="settings-item-value" style={{ fontSize: '0.6rem', opacity: 0.6 }}>{memberships.length} JOINED</div>
+            </div>
           </div>
         </div>
 
@@ -1092,68 +1143,89 @@ const SettingsScreen = ({ user, theme, onThemeToggle, onLogout }) => {
 /* ============================================================
    SCREEN: HOME
    ============================================================ */
-const HomeScreen = ({ navigate, onAdd }) => (
-  <div className="scroll-area" style={{ padding: '1.5rem 1.25rem 2rem' }}>
-    {/* Logo */}
-    <div style={{ textAlign: 'center', marginBottom: '2.5rem', paddingTop: '1.5rem' }}>
-      <h1 className="mono" style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.04em', marginBottom: '0.4rem' }}>
-        Pocket<span style={{ color: 'var(--accent)', textShadow: '0 0 18px var(--accent-glow)' }}>KB</span>
-      </h1>
-      <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', maxWidth: '240px', margin: '0 auto', lineHeight: 1.5 }}>
-        Your pocket-sized IT knowledge base
-      </p>
+const HomeScreen = ({ navigate, onAdd, fixes, categories }) => {
+  return (
+    <div className="fade-in scroll-area" style={{ height: '100%', padding: '1.5rem' }}>
+      {/* Premium Header */}
+      <div style={{ textAlign: 'center', marginBottom: '3rem', marginTop: '2rem' }}>
+        <div className="home-brand">
+          <span className="pocket">Pocket</span>
+          <span className="kb">KB</span>
+        </div>
+        <p className="mono" style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '0.75rem', letterSpacing: '0.2em', opacity: 0.8 }}>
+          YOUR POCKET-SIZED IT BRAIN
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gap: '1.15rem', marginBottom: '2.5rem' }}>
+        {/* Search Card */}
+        <div className="action-card search-glow" onClick={() => navigate('search')}>
+          <div className="action-card-icon" style={{ background: 'rgba(0, 229, 255, 0.15)', color: 'var(--accent)' }}>
+            <Icon name="Search" size={26} sw={2.5} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="action-card-title">Search</div>
+            <div className="action-card-desc">Find fixes by error code, keyword, or command</div>
+          </div>
+        </div>
+
+        {/* Browse Card */}
+        <div className="action-card" onClick={() => navigate('browse')}>
+          <div className="action-card-icon" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>
+            <Icon name="Folder" size={26} sw={2.2} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="action-card-title">Browse</div>
+            <div className="action-card-desc">Explore fixes organized by category</div>
+          </div>
+        </div>
+
+        {/* Camera Card */}
+        <div className="action-card" onClick={() => navigate('camera')}>
+          <div className="action-card-icon" style={{ background: 'rgba(251, 146, 60, 0.15)', color: '#fb923c' }}>
+            <Icon name="Camera" size={26} sw={2.2} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="action-card-title">Camera</div>
+            <div className="action-card-desc">Snap an error screen for instant lookup</div>
+          </div>
+        </div>
+
+        {/* Create Card */}
+        <div className="action-card add-fix-glow" onClick={onAdd} style={{ border: '1px solid rgba(0, 229, 255, 0.25)', background: 'rgba(0, 229, 255, 0.04)' }}>
+          <div className="action-card-icon" style={{ background: 'var(--accent)', color: '#000' }}>
+            <Icon name="Plus" size={28} sw={3} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="action-card-title" style={{ color: 'var(--accent)' }}>Add Fix</div>
+            <div className="action-card-desc" style={{ color: 'rgba(255,255,255,0.6)' }}>Create a new KB entry with steps & screenshots</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Bar */}
+      <div className="stats-bar scroll-area-x" style={{ display: 'flex', gap: '0.85rem', overflowX: 'auto', paddingBottom: '2rem', opacity: 0.6 }}>
+        <div className="stat-pill">
+          <Icon name="Database" size={12} color="var(--accent)" />
+          <span>{fixes.length} ENTRIES</span>
+        </div>
+        <div className="stat-pill">
+          <Icon name="Folder" size={12} color="var(--accent)" />
+          <span>{categories.length} CATEGORIES</span>
+        </div>
+        <div className="stat-pill">
+          <Icon name="Shield" size={12} color="var(--accent)" />
+          <span>RLS-ACTIVE</span>
+        </div>
+      </div>
     </div>
-
-    {/* Action Buttons */}
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-      <button className="action-btn" onClick={() => navigate('search')}>
-        <div className="action-icon" style={{ background: 'rgba(0,229,255,0.1)', color: '#00e5ff', boxShadow: '0 0 16px rgba(0,229,255,0.12)' }}>
-          <Icon name="Search" size={26} sw={2.5} />
-        </div>
-        <div>
-          <div className="action-label">Search</div>
-          <div className="action-desc">Find fixes by error code, keyword, or command</div>
-        </div>
-      </button>
-
-      <button className="action-btn" onClick={() => navigate('browse')}>
-        <div className="action-icon" style={{ background: 'rgba(192,132,252,0.1)', color: '#c084fc', boxShadow: '0 0 16px rgba(192,132,252,0.12)' }}>
-          <Icon name="Folder" size={26} sw={2.5} />
-        </div>
-        <div>
-          <div className="action-label">Browse</div>
-          <div className="action-desc">Explore fixes organized by category</div>
-        </div>
-      </button>
-
-      <button className="action-btn" onClick={() => navigate('camera')}>
-        <div className="action-icon" style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24', boxShadow: '0 0 16px rgba(251,191,36,0.12)' }}>
-          <Icon name="Camera" size={26} sw={2.5} />
-        </div>
-        <div>
-          <div className="action-label">Camera</div>
-          <div className="action-desc">Snap an error screen for instant lookup</div>
-        </div>
-      </button>
-
-      {/* Add New Fix button */}
-      <button className="action-btn" onClick={onAdd} style={{ borderColor: 'rgba(0,229,255,0.2)', background: 'rgba(0,229,255,0.04)' }}>
-        <div className="action-icon" style={{ background: 'rgba(0,229,255,0.12)', color: 'var(--accent)', boxShadow: '0 0 16px var(--accent-glow)', border: '1px solid rgba(0,229,255,0.2)' }}>
-          <Icon name="Plus" size={28} sw={2.5} />
-        </div>
-        <div>
-          <div className="action-label" style={{ color: 'var(--accent)' }}>Add Fix</div>
-          <div className="action-desc">Create a new KB entry with steps &amp; screenshots</div>
-        </div>
-      </button>
-    </div>
-  </div>
-);
+  );
+};
 
 /* ============================================================
    SCREEN: SEARCH
    ============================================================ */
-const SearchScreen = ({ onBack, onSelectFix, fixes }) => {
+const SearchScreen = ({ onBack, onSelectFix, fixes, categories }) => {
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const inputRef = useRef(null);
@@ -1167,7 +1239,7 @@ const SearchScreen = ({ onBack, onSelectFix, fixes }) => {
       (f) =>
         f.title.toLowerCase().includes(q) ||
         f.summary.toLowerCase().includes(q) ||
-        f.tags.some((t) => t.toLowerCase().includes(q))
+        (f.tags || []).some((t) => t.toLowerCase().includes(q))
     );
   }, [query, fixes]);
 
@@ -1207,7 +1279,7 @@ const SearchScreen = ({ onBack, onSelectFix, fixes }) => {
           </div>
         ) : (
           results.map((fix, i) => (
-            <FixCard key={fix.id} fix={fix} index={i + 1} onClick={() => onSelectFix(fix)} />
+            <FixCard key={fix.id} fix={fix} index={i + 1} onClick={() => onSelectFix(fix)} categories={categories} />
           ))
         )}
       </div>
@@ -1218,20 +1290,22 @@ const SearchScreen = ({ onBack, onSelectFix, fixes }) => {
 /* ============================================================
    SCREEN: BROWSE
    ============================================================ */
-const BrowseScreen = ({ onBack, onSelectFix, fixes }) => {
+const BrowseScreen = ({ onBack, onSelectFix, fixes, categories }) => {
   const [selectedCat, setSelectedCat] = useState(null);
 
   const counts = useMemo(() => {
     const m = {};
-    CATEGORIES.forEach((c) => { m[c.id] = 0; });
-    fixes.forEach((f) => { if (m[f.category] !== undefined) m[f.category]++; });
+    categories.forEach((c) => { m[c.id] = 0; });
+    fixes.forEach((f) => { if (m[f.category_id] !== undefined) m[f.category_id]++; });
     return m;
-  }, [fixes]);
+  }, [fixes, categories]);
 
   const catFixes = useMemo(
-    () => (selectedCat ? fixes.filter((f) => f.category === selectedCat.id) : []),
+    () => (selectedCat ? fixes.filter((f) => f.category_id === selectedCat.id) : []),
     [selectedCat, fixes]
   );
+
+  const recent = (fixes || []).slice(0, 8);
 
   return (
     <>
@@ -1239,23 +1313,33 @@ const BrowseScreen = ({ onBack, onSelectFix, fixes }) => {
         <button className="back-btn" onClick={onBack}><Icon name="ChevronLeft" size={22} /></button>
         <h2>BROWSE</h2>
       </div>
-      <div className="scroll-area" style={{ padding: '1.25rem' }}>
-        <div className="browse-grid">
-          {CATEGORIES.map((cat) => (
+      <div className="scroll-area" style={{ padding: '1.25rem 1.25rem 3rem' }}>
+        <div className="browse-grid" style={{ marginBottom: '2.5rem' }}>
+          {categories.map((cat) => (
             <CategoryCard key={cat.id} cat={cat} count={counts[cat.id]} onClick={() => setSelectedCat(cat)} />
           ))}
         </div>
+
+        {recent.length > 0 && (
+          <div className="fade-in">
+            <div className="section-title">
+              <span className="mono">RECENT ACTIVITY</span>
+              <div style={{ height: '1px', flex: 1, background: 'linear-gradient(90deg, var(--accent) 0%, transparent 100%)', opacity: 0.2 }}></div>
+            </div>
+            <FixList fixes={recent} onSelect={onSelectFix} categories={categories} />
+          </div>
+        )}
       </div>
 
       {selectedCat && (
         <div className="category-list-overlay">
           <div className="top-bar">
             <button className="back-btn" onClick={() => setSelectedCat(null)}><Icon name="ChevronLeft" size={22} /></button>
-            <div style={{ width: '1.65rem', height: '1.65rem', borderRadius: '0.45rem', background: `${selectedCat.color}15`, color: selectedCat.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name={selectedCat.icon} size={14} sw={2.5} />
+            <div style={{ width: '1.65rem', height: '1.65rem', borderRadius: '0.45rem', background: `${CATEGORY_MAP[selectedCat.name.toLowerCase()]?.color || 'var(--accent)'}15`, color: CATEGORY_MAP[selectedCat.name.toLowerCase()]?.color || 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name={CATEGORY_MAP[selectedCat.name.toLowerCase()]?.icon || 'Folder'} size={14} sw={2.5} />
             </div>
             <h2 style={{ color: 'var(--text-primary)', letterSpacing: 0, fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: '1rem' }}>
-              {selectedCat.label}
+              {selectedCat.name}
             </h2>
           </div>
           <div className="scroll-area" style={{ padding: '1rem 1.25rem 2rem' }}>
@@ -1265,7 +1349,7 @@ const BrowseScreen = ({ onBack, onSelectFix, fixes }) => {
               </div>
             ) : (
               catFixes.map((fix, i) => (
-                <FixCard key={fix.id} fix={fix} index={i + 1} onClick={() => onSelectFix(fix)} />
+                <FixCard key={fix.id} fix={fix} index={i + 1} onClick={() => onSelectFix(fix)} categories={categories} />
               ))
             )}
           </div>
@@ -1279,22 +1363,25 @@ const BrowseScreen = ({ onBack, onSelectFix, fixes }) => {
    MAIN APPLICATION
    ============================================================ */
 export default function App() {
-  const [user, setUser]             = useState(null);
-  const [theme, setTheme]           = useState(localStorage.getItem('kb-theme') || 'dark');
-  const [screen, setScreen]         = useState('home');
-  const [fixes, setFixes]           = useState(INITIAL_FIXES);
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState(null);
+  const [user, setUser]         = useState(null);
+  const [screen, setScreen]     = useState('home');
+  const [fixes, setFixes]       = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [memberships, setMemberships] = useState([]);
+  const [currentOrg, setCurrentOrg]   = useState(null);
+  
   const [selectedFix, setSelectedFix] = useState(null);
-  const [showCreate, setShowCreate]  = useState(false);
-  const [editingFix, setEditingFix]  = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState(null);
+  const [theme, setTheme]       = useState(localStorage.getItem('kb-theme') || 'dark');
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingFix, setEditingFix] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [fixToDelete, setFixToDelete] = useState(null);
-  const nextId = useRef(INITIAL_FIXES.length + 1);
 
-  const navigate = useCallback((s) => setScreen(s), []);
+  const navigate = (s) => setScreen(s);
 
-  // Auth Listener
+  // Auth & Session
   useEffect(() => {
     if (!supabase) return;
     
@@ -1311,6 +1398,49 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Fetch Memberships & Select Initial Org
+  useEffect(() => {
+    const fetchOrgData = async () => {
+      if (!user || !supabase) return;
+      try {
+        const { data, error } = await supabase
+          .from('org_members')
+          .select('*, org:orgs(*)')
+          .eq('user_id', user.id);
+        
+        if (error) throw error;
+        setMemberships(data || []);
+        if (data && data.length > 0) {
+          setCurrentOrg(data[0].org);
+        }
+      } catch (err) {
+        console.error('Error fetching orgs:', err);
+      }
+    };
+    fetchOrgData();
+  }, [user]);
+
+  // Fetch Categories for current Org
+  const fetchCategories = useCallback(async () => {
+    if (!currentOrg || !supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('org_id', currentOrg.id)
+        .order('sort_order', { ascending: true });
+      
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+    }
+  }, [currentOrg]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
   // Theme Logic
   useEffect(() => {
     document.body.classList.remove('light-theme');
@@ -1318,30 +1448,35 @@ export default function App() {
     localStorage.setItem('kb-theme', theme);
   }, [theme]);
 
-  // Fetch fixes on mount
+  // Fetch fixes for current Org
   const fetchFixes = useCallback(async () => {
-    if (!supabase) return;
+    if (!currentOrg || !supabase) return;
     setLoading(true);
     setError(null);
     try {
       const { data, error } = await supabase
         .from('fixes')
-        .select('*')
+        .select('*, steps:fix_steps(*), attachments:attachments(*), fix_tags(tags:tags(*))')
+        .eq('org_id', currentOrg.id)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      if (data) {
-        setFixes(data.length > 0 ? data : INITIAL_FIXES);
-      }
+      
+      // Map components to match legacy/expected flat format if needed, 
+      // but let's just ensure we sort the steps by step_order
+      const mapped = (data || []).map(f => ({
+        ...f,
+        steps: (f.steps || []).sort((a,b) => a.step_order - b.step_order).map(s => s.content),
+        tags: (f.fix_tags || []).map(ft => ft.tags?.name).filter(Boolean)
+      }));
+      
+      setFixes(mapped);
     } catch (err) {
       console.error('Error fetching fixes:', err);
-      if (err.code === 'PGRST205') {
-        setError('DATABASE TABLE MISSING: Please run the SQL script to create the "fixes" table.');
-      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentOrg]);
 
   useEffect(() => {
     fetchFixes();
@@ -1361,16 +1496,17 @@ export default function App() {
   };
 
   const handleAddFix = useCallback(async (fixData) => {
+    if (!currentOrg || !supabase) return;
     setLoading(true);
     try {
       let screenshotUrls = [];
 
-      // 1. Upload screenshots to Supabase Storage if available
-      if (supabase && fixData.screenshots && fixData.screenshots.length > 0) {
+      // 1. Upload screenshots to Supabase Storage org-scoped
+      if (fixData.screenshots && fixData.screenshots.length > 0) {
         for (let i = 0; i < fixData.screenshots.length; i++) {
           const blob = dataURLtoBlob(fixData.screenshots[i]);
-          const fileName = `${Date.now()}_${i}.png`;
-          const { data: storageData, error: storageError } = await supabase.storage
+          const fileName = `orgs/${currentOrg.id}/fixes/${Date.now()}_${i}.png`;
+          const { error: storageError } = await supabase.storage
             .from('screenshots')
             .upload(fileName, blob);
           
@@ -1382,102 +1518,162 @@ export default function App() {
           
           screenshotUrls.push(publicUrlData.publicUrl);
         }
-      } else {
-        // Fallback to dataURLs if Supabase not available (local only)
-        screenshotUrls = fixData.screenshots || [];
       }
 
       const newFix = {
+        org_id: currentOrg.id,
+        category_id: fixData.category,
         title: fixData.title,
-        category: fixData.category,
-        tags: fixData.tags,
         summary: fixData.summary,
-        steps: fixData.steps,
-        screenshots: screenshotUrls,
-        updated_ago: 'just now',
+        author_id: user.id,
       };
 
-      if (supabase) {
-        // 2. Save to Supabase Table
-        const { error } = await supabase.from('fixes').insert([newFix]);
-        if (error) throw error;
-        await fetchFixes();
-      } else {
-        // 3. Fallback to local state if Supabase not configured
-        setFixes((prev) => [{ ...newFix, id: nextId.current++ }, ...prev]);
-      }
+      // 2. Save to Supabase Table
+      const { data: insertedFix, error } = await supabase
+        .from('fixes')
+        .insert([newFix])
+        .select();
+      
+      if (error) throw error;
 
-      setShowCreate(false);
-    } catch (err) {
-      console.error('Error adding fix:', err);
-      alert('Failed to save fix. Please check console for details.');
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchFixes]);
+      // 3. Save normalized entities (Steps & Screenshots/Attachments)
+      if (insertedFix && insertedFix[0]) {
+        const fixId = insertedFix[0].id;
 
-  const handleUpdateFix = useCallback(async (fixId, fixData) => {
-    setLoading(true);
-    try {
-      let finalScreenshotUrls = [...fixData.existingScreenshots]; // Start with existing
+        // Steps
+        if (fixData.steps && fixData.steps.length > 0) {
+          const stepsToInsert = fixData.steps.map((content, idx) => ({
+            org_id: currentOrg.id,
+            fix_id: fixId,
+            step_order: idx + 1,
+            content
+          }));
+          await supabase.from('fix_steps').insert(stepsToInsert);
+        }
 
-      // 1. Upload NEW screenshots if any
-      if (supabase && fixData.newScreenshots && fixData.newScreenshots.length > 0) {
-        for (let i = 0; i < fixData.newScreenshots.length; i++) {
-          const blob = dataURLtoBlob(fixData.newScreenshots[i]);
-          const fileName = `${Date.now()}_upd_${i}.png`;
-          const { error: storageError } = await supabase.storage
-            .from('screenshots')
-            .upload(fileName, blob);
+        // Attachments
+        if (screenshotUrls.length > 0) {
+          const attachmentsToInsert = screenshotUrls.map(url => ({
+            org_id: currentOrg.id,
+            fix_id: fixId,
+            file_path: url,
+            file_name: url.split('/').pop(),
+            mime_type: 'image/png',
+            uploaded_by_id: user.id
+          }));
+          await supabase.from('attachments').insert(attachmentsToInsert);
+        }
+
+        // Tags logic (Normalized)
+        if (fixData.tags && fixData.tags.length > 0) {
+          // 1. Ensure tags exist for this org
+          const tagsToEnsure = fixData.tags.map(t => ({ org_id: currentOrg.id, name: t }));
+          const { data: orgTags, error: tagErr } = await supabase
+            .from('tags')
+            .upsert(tagsToEnsure, { onConflict: 'org_id, name' })
+            .select();
           
-          if (storageError) throw storageError;
-          
-          const { data: publicUrlData } = supabase.storage
-            .from('screenshots')
-            .getPublicUrl(fileName);
-          
-          finalScreenshotUrls.push(publicUrlData.publicUrl);
+          if (!tagErr && orgTags) {
+            // 2. Link tags to this fix
+            const fixTagsToInsert = orgTags
+              .filter(t => fixData.tags.includes(t.name))
+              .map(t => ({
+                org_id: currentOrg.id,
+                fix_id: fixId,
+                tag_id: t.id
+              }));
+            await supabase.from('fix_tags').insert(fixTagsToInsert);
+          }
         }
       }
 
+      await fetchFixes();
+      setShowCreate(false);
+    } catch (err) {
+      console.error('Error adding fix:', err);
+      alert('Failed to save fix.');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentOrg, user, fetchFixes]);
+
+  const handleUpdateFix = useCallback(async (fixId, fixData) => {
+    if (!currentOrg || !supabase) return;
+    setLoading(true);
+    try {
+      // 1. Update the main fix row
       const updatedFix = {
         title: fixData.title,
-        category: fixData.category,
-        tags: fixData.tags,
+        category_id: fixData.category,
         summary: fixData.summary,
-        steps: fixData.steps,
-        screenshots: finalScreenshotUrls,
-        updated_ago: 'just now',
+        updated_at: new Date().toISOString(),
+        updated_by_id: user.id,
       };
 
-      if (supabase) {
-        const { error } = await supabase.from('fixes').update(updatedFix).eq('id', fixId);
-        if (error) throw error;
-        await fetchFixes();
-      } else {
-        setFixes((prev) => prev.map(f => f.id === fixId ? { ...f, ...updatedFix } : f));
+      const { error } = await supabase
+        .from('fixes')
+        .update(updatedFix)
+        .eq('id', fixId)
+        .eq('org_id', currentOrg.id); // Guarding with org_id
+      
+      if (error) throw error;
+
+      // 3. Update Steps (Delete old ones and re-insert for simplicity in this mobile app context)
+      await supabase.from('fix_steps').delete().eq('fix_id', fixData.id);
+      if (fixData.steps && fixData.steps.length > 0) {
+        const stepsToInsert = fixData.steps.map((content, idx) => ({
+          org_id: currentOrg.id,
+          fix_id: fixData.id,
+          step_order: idx + 1,
+          content
+        }));
+        await supabase.from('fix_steps').insert(stepsToInsert);
       }
 
+      // 4. Update Tags (Delete old mappings and re-insert)
+      await supabase.from('fix_tags').delete().eq('fix_id', fixData.id);
+      if (fixData.tags && fixData.tags.length > 0) {
+        const tagsToEnsure = fixData.tags.map(t => ({ org_id: currentOrg.id, name: t }));
+        const { data: orgTags, error: tagErr } = await supabase
+          .from('tags')
+          .upsert(tagsToEnsure, { onConflict: 'org_id, name' })
+          .select();
+        
+        if (!tagErr && orgTags) {
+          const fixTagsToInsert = orgTags
+            .filter(t => fixData.tags.includes(t.name))
+            .map(t => ({
+              org_id: currentOrg.id,
+              fix_id: fixData.id,
+              tag_id: t.id
+            }));
+          await supabase.from('fix_tags').insert(fixTagsToInsert);
+        }
+      }
+
+      await fetchFixes();
       setShowCreate(false);
-      setSelectedFix(null); // Close detail view too
+      setEditingFix(null);
     } catch (err) {
       console.error('Error updating fix:', err);
       alert('Failed to update fix.');
     } finally {
       setLoading(false);
     }
-  }, [fetchFixes]);
+  }, [currentOrg, user, fetchFixes]);
 
   const handleDeleteFix = useCallback(async (fixId) => {
+    if (!currentOrg || !supabase) return;
     setLoading(true);
     try {
-      if (supabase) {
-        const { error } = await supabase.from('fixes').delete().eq('id', fixId);
-        if (error) throw error;
-        await fetchFixes();
-      } else {
-        setFixes((prev) => prev.filter(f => f.id !== fixId));
-      }
+      const { error } = await supabase
+        .from('fixes')
+        .delete()
+        .eq('id', fixId)
+        .eq('org_id', currentOrg.id);
+      
+      if (error) throw error;
+      setFixes((prev) => prev.filter((f) => f.id !== fixId));
       setSelectedFix(null);
       setShowDeleteConfirm(false);
       setFixToDelete(null);
@@ -1487,7 +1683,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [fetchFixes]);
+  }, [currentOrg]);
 
   const handleLogout = async () => {
     if (!supabase) return;
@@ -1521,13 +1717,15 @@ export default function App() {
       )}
 
       {/* Main Screens */}
-      {screen === 'home'     && <HomeScreen navigate={navigate} onAdd={() => setShowCreate(true)} />}
-      {screen === 'search'   && <SearchScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} />}
-      {screen === 'browse'   && <BrowseScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} />}
+      {screen === 'home'     && <HomeScreen navigate={navigate} onAdd={() => setShowCreate(true)} fixes={fixes} categories={categories} />}
+      {screen === 'search'   && <SearchScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} categories={categories} />}
+      {screen === 'browse'   && <BrowseScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} categories={categories} />}
       {screen === 'camera'   && <CameraScreen onBack={() => setScreen('home')} />}
       {screen === 'settings' && (
         <SettingsScreen 
           user={user} 
+          currentOrg={currentOrg}
+          memberships={memberships}
           theme={theme} 
           onThemeToggle={setTheme} 
           onLogout={handleLogout} 
@@ -1556,12 +1754,13 @@ export default function App() {
         </nav>
       )}
 
-      {/* Detail overlay */}
+      {/* Detail Overlay */}
       {selectedFix && (
         <DetailView 
           fix={selectedFix} 
+          categories={categories}
           onBack={() => setSelectedFix(null)} 
-          onEdit={(fix) => { setEditingFix(fix); setShowCreate(true); }}
+          onEdit={() => { setShowCreate(true); setEditingFix(selectedFix); setSelectedFix(null); }}
           onDeleteTrigger={(fix) => { setFixToDelete(fix); setShowDeleteConfirm(true); }}
         />
       )}
@@ -1569,6 +1768,7 @@ export default function App() {
       {/* Create / Edit Fix overlay */}
       {showCreate && (
         <CreateFixForm 
+          categories={categories}
           initialData={editingFix}
           onClose={() => { setShowCreate(false); setEditingFix(null); }} 
           onSave={editingFix ? handleUpdateFix : handleAddFix} 
