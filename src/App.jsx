@@ -102,6 +102,27 @@ const Icons = {
   Scan: (p) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
   ),
+  Cpu: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
+  ),
+  Database: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>
+  ),
+  Key: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/><path d="m14 11 2 2"/></svg>
+  ),
+  Zap: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+  ),
+  Smartphone: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+  ),
+  Lock: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  ),
+  Code: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+  ),
 };
 
 const Icon = ({ name, size = 24, sw }) => {
@@ -126,6 +147,12 @@ const CATEGORY_MAP = {
   software: { label: 'Software', icon: 'Code', color: '#10b981' },
   vpn: { label: 'VPN', icon: 'Shield', color: '#ef4444' },
   mobile: { label: 'Mobile', icon: 'Smartphone', color: '#ec4899' },
+};
+
+const getCategoryIcon = (cat, overrides) => {
+  if (overrides && cat && overrides[cat.id]) return overrides[cat.id];
+  if (cat?.icon) return cat.icon;
+  return CATEGORY_MAP[cat?.name?.toLowerCase()]?.icon || 'Folder';
 };
 
 const INITIAL_FIXES = [
@@ -332,15 +359,16 @@ const Tag = ({ label }) => {
   );
 };
 
-const FixCard = ({ fix, index, onClick, categories }) => {
+const FixCard = ({ fix, index, onClick, categories, overrides }) => {
   const cat = (categories || []).find(c => c.id === fix.category_id);
-  const iconInfo = CATEGORY_MAP[cat?.name.toLowerCase()] || { icon: 'Folder', color: 'var(--accent)' };
-  const c = iconInfo.color;
+  const icon = getCategoryIcon(cat, overrides);
+  const color = cat?.color || CATEGORY_MAP[cat?.name?.toLowerCase()]?.color || 'var(--accent)';
+
   return (
     <div className="card fix-card" onClick={onClick}>
       <div className="card-header">
-        <div className="card-cat" style={{ background: `${c}15`, color: c }}>
-          <Icon name={iconInfo.icon} size={14} sw={2.5} />
+        <div className="card-cat" style={{ background: `${color}15`, color: color }}>
+          <Icon name={icon} size={14} sw={2.5} />
           {cat?.name || 'Uncategorized'}
         </div>
         <div className="card-date">#0{index}</div>
@@ -358,24 +386,25 @@ const FixCard = ({ fix, index, onClick, categories }) => {
   );
 };
 
-const FixList = ({ fixes, onSelect, categories }) => (
+const FixList = ({ fixes, onSelect, categories, overrides }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
     {fixes.map((fix, i) => (
-      <FixCard key={fix.id} fix={fix} index={i + 1} onClick={() => onSelect(fix)} categories={categories} />
+      <FixCard key={fix.id} fix={fix} index={i + 1} onClick={() => onSelect(fix)} categories={categories} overrides={overrides} />
     ))}
   </div>
 );
 
-const CategoryCard = ({ cat, count, onClick }) => {
-  const iconInfo = CATEGORY_MAP[cat.name.toLowerCase()] || { icon: 'Folder', color: 'var(--accent)' };
+const CategoryCard = ({ cat, count, onClick, overrides }) => {
+  const icon = getCategoryIcon(cat, overrides);
+  const color = cat?.color || CATEGORY_MAP[cat?.name?.toLowerCase()]?.color || 'var(--accent)';
   
   return (
     <div className="cat-card" onClick={onClick}>
       <div
         className="cat-icon"
-        style={{ background: `${iconInfo.color}15`, color: iconInfo.color, boxShadow: `0 0 12px ${iconInfo.color}18` }}
+        style={{ background: `${color}15`, color: color, boxShadow: `0 0 12px ${color}18` }}
       >
-        <Icon name={iconInfo.icon} size={22} sw={2.5} />
+        <Icon name={icon} size={22} sw={2.5} />
       </div>
       <div className="cat-name">{cat.name}</div>
       <div className="cat-count">{count} {count === 1 ? 'fix' : 'fixes'}</div>
@@ -1260,9 +1289,195 @@ const QRScannerEffect = ({ containerRef, instanceRef, onDecode }) => {
 };
 
 /* ============================================================
+   COMPONENT: CATEGORY MANAGER & ICON PICKER
+   ============================================================ */
+const ICON_POOL = [
+  'Wifi', 'Monitor', 'Server', 'Shield', 'Users', 'Mail', 'Globe', 'Cloud', 
+  'Printer', 'User', 'Settings', 'Image', 'Tag', 'Cpu', 'Database', 'Key', 
+  'Zap', 'Smartphone', 'Lock', 'Code', 'Scan', 'Grid', 'Home'
+];
+
+const IconPicker = ({ current, onSelect, onBack }) => (
+  <div className="category-manager-overlay">
+    <div className="top-bar">
+      <button className="back-btn" onClick={onBack}><Icon name="ChevronLeft" size={22} /></button>
+      <h2>CHOOSE ICON</h2>
+    </div>
+    <div className="scroll-area" style={{ padding: '1.5rem' }}>
+      <div className="icon-grid">
+        {ICON_POOL.map(icon => (
+          <button 
+            key={icon} 
+            className={`icon-box ${current === icon ? 'active' : ''}`}
+            onClick={() => onSelect(icon)}
+          >
+            <Icon name={icon} size={24} />
+            <div className="icon-label">{icon}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+const CategoryManager = ({ categories, overrides, onSaveOverride, onCreate, onDelete, onClose, user }) => {
+  const [showPicker, setShowPicker] = useState(null); // { id, currentIcon }
+  const [showAdd, setShowAdd] = useState(false);
+  const [catToDelete, setCatToDelete] = useState(null);
+  const [newName, setNewName] = useState('');
+  const [newColor, setNewColor] = useState('#3b82f6');
+  const [newIcon, setNewIcon] = useState('Folder');
+
+  const myCount = categories.filter(c => c.created_by_id === user?.id).length;
+  const limitReached = myCount >= 5;
+
+  const handleCreate = async () => {
+    if (!newName.trim() || limitReached) return;
+    await onCreate({ name: newName, color: newColor, icon: newIcon });
+    setNewName('');
+    setShowAdd(false);
+  };
+
+  if (showPicker) {
+    return (
+      <IconPicker 
+        current={showPicker.currentIcon} 
+        onSelect={(icon) => { onSaveOverride(showPicker.id, icon); setShowPicker(null); }} 
+        onBack={() => setShowPicker(null)} 
+      />
+    );
+  }
+
+  return (
+    <div className="category-manager-overlay">
+      <div className="top-bar">
+        <button className="back-btn" onClick={onClose}><Icon name="ChevronLeft" size={22} /></button>
+        <h2>CATEGORIES</h2>
+      </div>
+
+      <div className="scroll-area" style={{ padding: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <div className="mono" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '0.1em' }}>
+            MANAGE CATEGORIES ({categories.length})
+          </div>
+          {!showAdd && (
+            <button 
+              className="add-cat-tiny" 
+              onClick={() => setShowAdd(true)}
+              disabled={limitReached}
+              style={{ opacity: limitReached ? 0.5 : 1 }}
+            >
+              <Icon name="Plus" size={12} /> {limitReached ? 'LIMIT REACHED' : 'ADD NEW'}
+            </button>
+          )}
+        </div>
+
+        {showAdd && (
+          <div className="settings-group" style={{ marginBottom: '2rem', padding: '1.25rem', border: '1px solid var(--border)', borderRadius: '12px', background: 'rgba(255,255,255,0.03)' }}>
+            <div style={{ marginBottom: '1rem' }}>
+              <label className="mono" style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>CATEGORY NAME</label>
+              <input 
+                className="input-base" 
+                value={newName} 
+                onChange={e => setNewName(e.target.value)} 
+                placeholder="Legacy, DevOps, etc." 
+                style={{ marginTop: '0.5rem' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ flex: 1 }}>
+                <label className="mono" style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>COLOR</label>
+                <input 
+                  type="color" 
+                  value={newColor} 
+                  onChange={e => setNewColor(e.target.value)} 
+                  style={{ display: 'block', width: '100%', height: '38px', background: 'none', border: '1px solid var(--border)', borderRadius: '8px', marginTop: '0.5rem', cursor: 'pointer' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="mono" style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>ICON</label>
+                <button 
+                  className="input-base" 
+                  onClick={() => setShowPicker({ id: 'NEW', currentIcon: newIcon })}
+                  style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', justifyContent: 'center' }}
+                >
+                  <Icon name={newIcon} size={18} /> SELECT
+                </button>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button className="primary-btn" onClick={handleCreate} disabled={!newName.trim()} style={{ flex: 1 }}>CREATE</button>
+              <button className="secondary-btn" onClick={() => setShowAdd(false)} style={{ flex: 1 }}>CANCEL</button>
+            </div>
+          </div>
+        )}
+
+        <div className="settings-group">
+          {categories.map((cat) => {
+            const icon = overrides[cat.id] || cat.icon;
+            const isCustom = !!cat.created_by_id;
+            return (
+              <div key={cat.id} className="settings-item">
+                <div 
+                  className="cat-icon-ring" 
+                  style={{ borderColor: cat.color }} 
+                  onClick={() => setShowPicker({ id: cat.id, currentIcon: icon })}
+                >
+                  <Icon name={icon} size={18} color={cat.color} />
+                  <div className="edit-badge"><Icon name="Edit" size={10} /></div>
+                </div>
+                <div className="settings-item-label" style={{ marginLeft: '1rem' }}>
+                  {cat.name}
+                  {isCustom && <span className="mono" style={{ fontSize: '0.5rem', marginLeft: '0.5rem', color: 'var(--accent)', opacity: 0.7 }}>CREATED BY YOU</span>}
+                </div>
+                <div className="settings-item-value" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                   <span style={{ fontSize: '0.7rem' }}>{overrides[cat.id] ? '(LOCAL OVERRIDE)' : ''}</span>
+                   {isCustom && (
+                     <button 
+                       onClick={(e) => { e.stopPropagation(); setCatToDelete(cat); }}
+                       style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', opacity: 0.7 }}
+                       title="Delete Category"
+                     >
+                       <Icon name="Trash" size={16} />
+                     </button>
+                   )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {catToDelete && (
+          <div className="modal-overlay" style={{ zIndex: 3000 }}>
+            <div className="fade-in modal-content" style={{ maxWidth: '300px', textAlign: 'center' }}>
+              <div style={{ marginBottom: '1.5rem', color: '#ef4444' }}>
+                <Icon name="Trash" size={40} />
+              </div>
+              <h3 style={{ marginBottom: '0.75rem' }}>Delete Category?</h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '2rem', lineHeight: 1.5 }}>
+                Are you sure you want to delete "<strong>{catToDelete.name}</strong>"?<br/>
+                Linked fixes will become uncategorized.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button className="primary-btn" style={{ flex: 1, background: '#ef4444' }} onClick={() => { onDelete(catToDelete.id); setCatToDelete(null); }}>DELETE</button>
+                <button className="secondary-btn" style={{ flex: 1 }} onClick={() => setCatToDelete(null)}>CANCEL</button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div className="mono" style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.55rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          Icon changes are stored locally in your browser and<br/>apply only to your account.
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ============================================================
    SETTINGS SCREEN
    ============================================================ */
-const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, onLogout, onSwitchOrg, onJoinOrg, onManageMembers, pendingMembers, onApproveMember, onRejectMember, onShowQR }) => {
+const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, onLogout, onSwitchOrg, onJoinOrg, onManageMembers, onManageCategories, pendingMembers, onApproveMember, onRejectMember, onShowQR }) => {
   const currentRole = memberships.find(m => m.org_id === currentOrg?.id)?.role;
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
   const pendingCount = (pendingMembers || []).length;
@@ -1389,6 +1604,11 @@ const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, o
         <div className="settings-section">
           <div className="mono" style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.1em' }}>PREFERENCES</div>
           <div className="settings-group">
+            <div className="settings-item" onClick={onManageCategories} style={{ cursor: 'pointer' }}>
+              <Icon name="Tag" size={18} color="var(--accent)" />
+              <div className="settings-item-label">Categories & Icons</div>
+              <Icon name="ChevronLeft" size={14} sw={3} style={{ transform: 'rotate(180deg)', opacity: 0.3 }} />
+            </div>
             <div className="settings-item">
               <Icon name={theme === 'dark' ? 'Moon' : 'Sun'} size={18} color="var(--accent)" />
               <div className="settings-item-label">Appearance</div>
@@ -1445,7 +1665,7 @@ const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, o
 /* ============================================================
    SCREEN: HOME
    ============================================================ */
-const HomeScreen = ({ navigate, onAdd, fixes, categories }) => {
+const HomeScreen = ({ navigate, onAdd, fixes, categories, overrides }) => {
   return (
     <div className="fade-in scroll-area" style={{ height: '100%', padding: '1.5rem' }}>
       {/* Premium Header */}
@@ -1597,7 +1817,7 @@ const SearchScreen = ({ onBack, onSelectFix, fixes, categories, initialQuery = '
           </div>
         ) : (
           results.map((fix, i) => (
-            <FixCard key={fix.id} fix={fix} index={i + 1} onClick={() => onSelectFix(fix)} categories={categories} />
+            <FixCard key={fix.id} fix={fix} index={i + 1} onClick={() => onSelectFix(fix)} categories={categories} overrides={initialQuery ? {} : {}} />
           ))
         )}
       </div>
@@ -1608,7 +1828,7 @@ const SearchScreen = ({ onBack, onSelectFix, fixes, categories, initialQuery = '
 /* ============================================================
    SCREEN: BROWSE
    ============================================================ */
-const BrowseScreen = ({ onBack, onSelectFix, fixes, categories }) => {
+const BrowseScreen = ({ onBack, onSelectFix, fixes, categories, overrides }) => {
   const [selectedCat, setSelectedCat] = useState(null);
 
   const counts = useMemo(() => {
@@ -1634,7 +1854,7 @@ const BrowseScreen = ({ onBack, onSelectFix, fixes, categories }) => {
       <div className="scroll-area" style={{ padding: '1.25rem 1.25rem 3rem' }}>
         <div className="browse-grid" style={{ marginBottom: '2.5rem' }}>
           {categories.map((cat) => (
-            <CategoryCard key={cat.id} cat={cat} count={counts[cat.id]} onClick={() => setSelectedCat(cat)} />
+            <CategoryCard key={cat.id} cat={cat} count={counts[cat.id]} onClick={() => setSelectedCat(cat)} overrides={overrides} />
           ))}
         </div>
 
@@ -1653,8 +1873,8 @@ const BrowseScreen = ({ onBack, onSelectFix, fixes, categories }) => {
         <div className="category-list-overlay">
           <div className="top-bar">
             <button className="back-btn" onClick={() => setSelectedCat(null)}><Icon name="ChevronLeft" size={22} /></button>
-            <div style={{ width: '1.65rem', height: '1.65rem', borderRadius: '0.45rem', background: `${CATEGORY_MAP[selectedCat.name.toLowerCase()]?.color || 'var(--accent)'}15`, color: CATEGORY_MAP[selectedCat.name.toLowerCase()]?.color || 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name={CATEGORY_MAP[selectedCat.name.toLowerCase()]?.icon || 'Folder'} size={14} sw={2.5} />
+            <div style={{ width: '1.65rem', height: '1.65rem', borderRadius: '0.45rem', background: `${(selectedCat?.color || CATEGORY_MAP[selectedCat?.name?.toLowerCase()]?.color || 'var(--accent)')}15`, color: selectedCat?.color || CATEGORY_MAP[selectedCat?.name?.toLowerCase()]?.color || 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name={getCategoryIcon(selectedCat, overrides)} size={14} sw={2.5} />
             </div>
             <h2 style={{ color: 'var(--text-primary)', letterSpacing: 0, fontFamily: "'Nunito', sans-serif", fontWeight: 800, fontSize: '1rem' }}>
               {selectedCat.name}
@@ -1703,6 +1923,18 @@ export default function App() {
   const [joinScanMode, setJoinScanMode] = useState(false); // QR scan mode in join dialog
   const qrScannerRef = useRef(null);
   const qrScannerInstance = useRef(null);
+
+  const [iconOverrides, setIconOverrides] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('kb-icon-overrides') || '{}');
+    } catch { return {}; }
+  });
+  const [showManageCategories, setShowManageCategories] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('kb-icon-overrides', JSON.stringify(iconOverrides));
+  }, [iconOverrides]);
+
 
   const navigate = (s) => setScreen(s);
 
@@ -1823,6 +2055,47 @@ export default function App() {
       u8arr[n] = bstr.charCodeAt(n);
     }
     return new Blob([u8arr], { type: mime });
+  };
+
+  // Create Category
+  const handleCreateCategory = async (catData) => {
+    if (!currentOrg || !supabase || !user) return;
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .insert({
+          ...catData,
+          org_id: currentOrg.id,
+          created_by_id: user.id,
+          sort_order: categories.length + 1
+        });
+      
+      if (error) throw error;
+      fetchCategories();
+    } catch (err) {
+      console.error('Error creating category:', err);
+      alert('Failed to create category.');
+    }
+  };
+
+  const handleSaveOverride = (id, icon) => {
+    setIconOverrides(prev => ({ ...prev, [id]: icon }));
+  };
+
+  const handleDeleteCategory = async (id) => {
+    if (!supabase) return;
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      fetchCategories();
+    } catch (err) {
+      console.error('Error deleting category:', err);
+      alert('Failed to delete category.');
+    }
   };
 
   const handleAddFix = useCallback(async (fixData) => {
@@ -2186,7 +2459,7 @@ export default function App() {
       )}
 
       {/* Main Screens */}
-      {screen === 'home'     && <HomeScreen navigate={navigate} onAdd={() => setShowCreate(true)} fixes={fixes} categories={categories} />}
+      {screen === 'home'     && <HomeScreen navigate={navigate} onAdd={() => setShowCreate(true)} fixes={fixes} categories={categories} overrides={iconOverrides} />}
       {screen === 'search'   && (
         <SearchScreen 
           onBack={() => { setScreen('home'); setOcrQuery(''); }} 
@@ -2194,9 +2467,10 @@ export default function App() {
           fixes={fixes} 
           categories={categories} 
           initialQuery={ocrQuery}
+          overrides={iconOverrides}
         />
       )}
-      {screen === 'browse'   && <BrowseScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} categories={categories} />}
+      {screen === 'browse'   && <BrowseScreen onBack={() => setScreen('home')} onSelectFix={setSelectedFix} fixes={fixes} categories={categories} overrides={iconOverrides} />}
       {screen === 'camera'   && <CameraScreen onBack={() => setScreen('home')} onScan={(text) => { setOcrQuery(text); setScreen('search'); }} />}
       {screen === 'settings' && (
         <SettingsScreen 
@@ -2212,6 +2486,7 @@ export default function App() {
           onApproveMember={handleApproveMember}
           onRejectMember={handleRejectMember}
           onShowQR={(org) => setQrOrg(org)}
+          onManageCategories={() => setShowManageCategories(true)}
         />
       )}
 
@@ -2334,6 +2609,19 @@ export default function App() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Category Management Overlay */}
+      {showManageCategories && (
+        <CategoryManager
+          categories={categories}
+          overrides={iconOverrides}
+          onSaveOverride={handleSaveOverride}
+          onCreate={handleCreateCategory}
+          onDelete={handleDeleteCategory}
+          onClose={() => setShowManageCategories(false)}
+          user={user}
+        />
       )}
 
       {/* QR Code Generation Overlay */}
