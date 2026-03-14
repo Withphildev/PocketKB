@@ -123,11 +123,14 @@ const Icons = {
   Code: (p) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
   ),
+  Star: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill={p.fill||"none"} stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+  ),
 };
 
-const Icon = ({ name, size = 24, sw }) => {
+const Icon = ({ name, size = 24, sw, fill }) => {
   const Comp = Icons[name];
-  return Comp ? <Comp size={size} sw={sw} /> : null;
+  return Comp ? <Comp size={size} sw={sw} fill={fill} /> : null;
 };
 
 /* ============================================================
@@ -415,7 +418,7 @@ const CategoryCard = ({ cat, count, onClick, overrides }) => {
 /* ============================================================
    DETAIL VIEW
    ============================================================ */
-const DetailView = ({ fix, onBack, onEdit, onDeleteTrigger, categories }) => {
+const DetailView = ({ fix, onBack, onEdit, onDeleteTrigger, categories, isStarred, onToggleStar }) => {
   const [done, setDone] = useState({});
   const toggle = (i) => setDone((prev) => ({ ...prev, [i]: !prev[i] }));
 
@@ -441,6 +444,14 @@ const DetailView = ({ fix, onBack, onEdit, onDeleteTrigger, categories }) => {
           {fix.title}
         </h2>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button 
+            className="action-btn-circle" 
+            onClick={() => onToggleStar(fix.id, !isStarred)} 
+            title={isStarred ? "Unstar Fix" : "Star Fix"}
+            style={{ width: '32px', height: '32px', borderRadius: '50%', background: isStarred ? 'rgba(250, 204, 21, 0.12)' : 'var(--bg-tertiary)', border: `1px solid ${isStarred ? 'rgba(250, 204, 21, 0.4)' : 'var(--border)'}`, color: isStarred ? '#facc15' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+          >
+            <Icon name="Star" size={16} fill={isStarred ? '#facc15' : 'none'} sw={isStarred ? 0 : 2} />
+          </button>
           <button 
             className="action-btn-circle" 
             onClick={() => onEdit(fix)} 
@@ -1898,12 +1909,42 @@ const BrowseScreen = ({ onBack, onSelectFix, fixes, categories, overrides }) => 
 };
 
 /* ============================================================
+   SCREEN: MOST USED
+   ============================================================ */
+const MostUsedScreen = ({ fixes, starredFixIds, onSelectFix, categories, overrides }) => {
+  const starredFixes = fixes.filter(fix => starredFixIds.has(fix.id));
+  
+  return (
+    <div className="fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div className="top-bar">
+        <h2 style={{ flex: 1, letterSpacing: '0.15em' }}>MOST USED</h2>
+      </div>
+      <div className="scroll-area" style={{ padding: '1.25rem', paddingBottom: '6rem' }}>
+        {starredFixes.length === 0 ? (
+          <div className="empty-state" style={{ marginTop: '3rem' }}>
+            <Icon name="Star" size={48} sw={1.5} />
+            <div style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>You haven't starred any fixes yet.</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {starredFixes.map((fix, i) => (
+              <FixCard key={fix.id} fix={fix} index={i + 1} onClick={() => onSelectFix(fix)} categories={categories} overrides={overrides} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ============================================================
    MAIN APPLICATION
    ============================================================ */
 export default function App() {
   const [user, setUser]         = useState(null);
   const [screen, setScreen]     = useState('home');
   const [fixes, setFixes]       = useState([]);
+  const [starredFixIds, setStarredFixIds] = useState(new Set());
   const [categories, setCategories] = useState([]);
   const [memberships, setMemberships] = useState([]);
   const [currentOrg, setCurrentOrg]   = useState(null);
@@ -2043,6 +2084,57 @@ export default function App() {
   useEffect(() => {
     fetchFixes();
   }, [fetchFixes]);
+
+  // Fetch User Stars
+  const fetchUserStars = useCallback(async () => {
+    if (!currentOrg || !user || !supabase) return;
+    try {
+      const { data, error } = await supabase
+        .from('user_stars')
+        .select('fix_id')
+        .eq('org_id', currentOrg.id)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      setStarredFixIds(new Set((data || []).map(row => row.fix_id)));
+    } catch (err) {
+      console.error('Error fetching user stars:', err);
+    }
+  }, [currentOrg, user]);
+
+  useEffect(() => {
+    fetchUserStars();
+  }, [fetchUserStars]);
+
+  // Handle Toggle Star
+  const handleToggleStar = async (fixId, isStarred) => {
+    if (!currentOrg || !user || !supabase) return;
+    try {
+      if (isStarred) {
+        setStarredFixIds(prev => new Set([...prev, fixId]));
+        const { error } = await supabase.from('user_stars').insert({
+          org_id: currentOrg.id,
+          fix_id: fixId,
+          user_id: user.id
+        });
+        if (error) {
+           setStarredFixIds(prev => { const n = new Set(prev); n.delete(fixId); return n; });
+           throw error;
+        }
+      } else {
+        setStarredFixIds(prev => { const n = new Set(prev); n.delete(fixId); return n; });
+        const { error } = await supabase.from('user_stars')
+          .delete()
+          .match({ org_id: currentOrg.id, fix_id: fixId, user_id: user.id });
+        if (error) {
+           setStarredFixIds(prev => new Set([...prev, fixId]));
+           throw error;
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling star:', err);
+    }
+  };
 
   // Helper: Convert DataURL to Blob for Supabase Storage
   const dataURLtoBlob = (dataurl) => {
@@ -2460,6 +2552,15 @@ export default function App() {
 
       {/* Main Screens */}
       {screen === 'home'     && <HomeScreen navigate={navigate} onAdd={() => setShowCreate(true)} fixes={fixes} categories={categories} overrides={iconOverrides} />}
+      {screen === 'most_used' && (
+        <MostUsedScreen
+          fixes={fixes}
+          starredFixIds={starredFixIds}
+          onSelectFix={(f) => setSelectedFix(f)}
+          categories={categories}
+          overrides={iconOverrides}
+        />
+      )}
       {screen === 'search'   && (
         <SearchScreen 
           onBack={() => { setScreen('home'); setOcrQuery(''); }} 
@@ -2497,6 +2598,7 @@ export default function App() {
             { id: 'home',     icon: 'Home',     label: 'Home' },
             { id: 'search',   icon: 'Search',   label: 'Search' },
             { id: 'browse',   icon: 'Folder',   label: 'Browse' },
+            { id: 'most_used',icon: 'Star',     label: 'MU' },
             { id: 'settings', icon: 'Settings', label: 'Settings' },
           ].map((item) => (
             <button
@@ -2517,9 +2619,11 @@ export default function App() {
         <DetailView 
           fix={selectedFix} 
           categories={categories}
+          isStarred={starredFixIds.has(selectedFix.id)}
+          onToggleStar={handleToggleStar}
           onBack={() => setSelectedFix(null)} 
-          onEdit={() => { setShowCreate(true); setEditingFix(selectedFix); setSelectedFix(null); }}
-          onDeleteTrigger={(fix) => { setFixToDelete(fix); setShowDeleteConfirm(true); }}
+          onEdit={(f) => { setEditingFix(f); setShowCreate(true); }}
+          onDeleteTrigger={(f) => { setFixToDelete(f); setShowDeleteConfirm(true); }}
         />
       )}
 
