@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import Tesseract from 'tesseract.js';
+import { QRCodeSVG } from 'qrcode.react';
 
 // Supabase Initialization
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -91,6 +92,15 @@ const Icons = {
   ),
   Trash: (p) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+  ),
+  Grid: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+  ),
+  Copy: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+  ),
+  Scan: (p) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={p.sw||2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
   ),
 };
 
@@ -485,6 +495,65 @@ const DetailView = ({ fix, onBack, onEdit, onDeleteTrigger, categories }) => {
 /* ============================================================
    CAMERA SCREEN
    ============================================================ */
+/* ============================================================
+   SMART OCR ERROR EXTRACTION
+   Extracts error codes, HTTP status codes, and technical keywords
+   from raw OCR text to produce a focused search query.
+   ============================================================ */
+const extractErrorTerms = (rawText) => {
+  const text = rawText.replace(/\s+/g, ' ').trim();
+  const found = [];
+
+  // 1. "Error <code>" patterns (Error 500, Error 0x80070005)
+  const errorCode = text.match(/error\s+(?:code\s*[:.]?\s*)?([0-9]+|0x[0-9a-f]+)/gi);
+  if (errorCode) found.push(...errorCode.map(m => m.trim()));
+
+  // 2. "STOP 0x..." patterns (BSOD stop codes)
+  const stopCode = text.match(/stop\s+0x[0-9a-f]+/gi);
+  if (stopCode) found.push(...stopCode.map(m => m.trim()));
+
+  // 3. Windows hex error codes standalone (0x80070005)
+  const hexCode = text.match(/\b0x[0-9a-f]{4,}/gi);
+  if (hexCode) found.push(...hexCode.map(m => m.trim()));
+
+  // 4. HTTP status codes in context ("500 Internal", "404 Not Found")
+  const httpStatus = text.match(/\b(4[0-9]{2}|5[0-9]{2})\s+[a-z]+/gi);
+  if (httpStatus) found.push(...httpStatus.map(m => m.trim().split(/\s+/).slice(0, 3).join(' ')));
+
+  // 5. Standalone HTTP status codes (just 500, 404, etc.)
+  const statusOnly = text.match(/\b(4[0-9]{2}|5[0-9]{2})\b/g);
+  if (statusOnly) found.push(...statusOnly);
+
+  // 6. "<Service> Error" patterns (Cloudflare Error, DNS Error)
+  const svcError = text.match(/\b\w+\s+error\b/gi);
+  if (svcError) found.push(...svcError.map(m => m.trim()));
+
+  // 7. Common technical error keywords
+  const keywords = ['BSOD', 'timeout', 'timed out', 'connection refused',
+    'access denied', 'permission denied', 'not found', 'unauthorized',
+    'forbidden', 'bad gateway', 'service unavailable', 'internal server',
+    'certificate', 'SSL', 'TLS', 'DNS', 'DHCP', 'firewall', 'proxy',
+    'authentication failed', 'login failed', 'crash', 'fatal',
+    'segmentation fault', 'stack overflow', 'out of memory', 'disk full',
+    'blue screen', 'kernel panic'];
+  const lower = text.toLowerCase();
+  keywords.forEach(kw => {
+    if (lower.includes(kw.toLowerCase())) found.push(kw);
+  });
+
+  // Deduplicate (case-insensitive)
+  const seen = new Set();
+  const unique = found.filter(term => {
+    const key = term.toLowerCase().trim();
+    if (seen.has(key) || key.length < 2) return false;
+    seen.add(key);
+    return true;
+  });
+
+  // Return extracted terms joined, or fallback to first 60 chars of cleaned text
+  return unique.length > 0 ? unique.join(' ') : text.slice(0, 60);
+};
+
 const CameraScreen = ({ onBack, onScan }) => {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -518,8 +587,15 @@ const CameraScreen = ({ onBack, onScan }) => {
       
       // Clean up text — remove noise, keep alphanumeric and common symbols
       const clean = text.replace(/[^a-zA-Z0-9\s.,\-:()]/g, ' ').replace(/\s+/g, ' ').trim();
-      if (clean) onScan(clean);
-      else alert("Could not read any text. Try better lighting or a clearer shot.");
+      if (clean) {
+        // Extract error codes and keywords instead of dumping raw text
+        const extracted = extractErrorTerms(clean);
+        console.log('[OCR] Raw:', clean.slice(0, 100), '...');
+        console.log('[OCR] Extracted:', extracted);
+        onScan(extracted);
+      } else {
+        alert("Could not read any text. Try better lighting or a clearer shot.");
+      }
     } catch (err) {
       console.error('OCR Error:', err);
       alert("Scanning failed. Please try again.");
@@ -1137,9 +1213,56 @@ const AuthForm = ({ onAuthSuccess }) => {
 };
 
 /* ============================================================
+   QR SCANNER EFFECT (lazy loads html5-qrcode)
+   ============================================================ */
+const QRScannerEffect = ({ containerRef, instanceRef, onDecode }) => {
+  useEffect(() => {
+    let scanner = null;
+    let stopped = false;
+
+    const initScanner = async () => {
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode');
+        if (stopped) return;
+        
+        scanner = new Html5Qrcode("qr-reader");
+        instanceRef.current = scanner;
+        
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 200, height: 200 } },
+          (decodedText) => {
+            scanner.stop().catch(() => {});
+            instanceRef.current = null;
+            onDecode(decodedText);
+          },
+          () => {} // ignore errors (no QR found each frame)
+        );
+      } catch (err) {
+        console.error('QR Scanner error:', err);
+        alert('Could not start camera. Make sure camera permissions are granted.');
+      }
+    };
+
+    if (containerRef.current) {
+      initScanner();
+    }
+
+    return () => {
+      stopped = true;
+      if (scanner) {
+        scanner.stop().catch(() => {});
+      }
+    };
+  }, []);
+
+  return null;
+};
+
+/* ============================================================
    SETTINGS SCREEN
    ============================================================ */
-const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, onLogout, onSwitchOrg, onJoinOrg, onManageMembers, pendingMembers, onApproveMember, onRejectMember }) => {
+const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, onLogout, onSwitchOrg, onJoinOrg, onManageMembers, pendingMembers, onApproveMember, onRejectMember, onShowQR }) => {
   const currentRole = memberships.find(m => m.org_id === currentOrg?.id)?.role;
   const isAdmin = currentRole === 'owner' || currentRole === 'admin';
   const pendingCount = (pendingMembers || []).length;
@@ -1178,6 +1301,7 @@ const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, o
             {memberships.map((m) => {
               const isActive = currentOrg?.id === m.org.id;
               const isPending = m.status === 'pending';
+              const isAdminRole = m.role === 'owner' || m.role === 'admin';
               return (
                 <div 
                   key={m.org.id} 
@@ -1188,9 +1312,24 @@ const SettingsScreen = ({ user, currentOrg, memberships, theme, onThemeToggle, o
                   <div className="workspace-icon">
                     <Icon name="Home" size={18} color={isPending ? '#f59e0b' : isActive ? 'var(--bg-primary)' : 'var(--accent)'} />
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="workspace-name">{m.org.name}</div>
                     <div className="workspace-role">{m.role.toUpperCase()}</div>
+                  </div>
+                  {/* Role & QR Badges */}
+                  <div className="workspace-badges">
+                    <div className={`role-badge ${isAdminRole ? 'admin' : 'member'}`} title={isAdminRole ? 'Admin' : 'Member'}>
+                      <Icon name={isAdminRole ? 'Shield' : 'User'} size={12} sw={2.5} />
+                    </div>
+                    {!isPending && (
+                      <button 
+                        className="qr-badge" 
+                        title="Show QR Code"
+                        onClick={(e) => { e.stopPropagation(); onShowQR(m.org); }}
+                      >
+                        <Icon name="Grid" size={12} sw={2.5} />
+                      </button>
+                    )}
                   </div>
                   {isPending ? (
                     <div className="pending-badge">PENDING</div>
@@ -1397,13 +1536,29 @@ const SearchScreen = ({ onBack, onSelectFix, fixes, categories, initialQuery = '
 
   const results = useMemo(() => {
     if (!query.trim()) return fixes;
-    const q = query.toLowerCase();
-    return fixes.filter(
-      (f) =>
-        f.title.toLowerCase().includes(q) ||
-        f.summary.toLowerCase().includes(q) ||
-        (f.tags || []).some((t) => t.toLowerCase().includes(q))
-    );
+    const q = query.toLowerCase().trim();
+    
+    // Split into individual search terms for OR-matching
+    // This makes OCR queries like "Error 500 Internal server" match a fix titled "Error 500"
+    const terms = q.split(/\s+/).filter(t => t.length >= 2);
+    
+    return fixes.filter((f) => {
+      const title = f.title.toLowerCase();
+      const summary = f.summary.toLowerCase();
+      const tags = (f.tags || []).map(t => t.toLowerCase());
+      
+      // First: try exact full-query match
+      if (title.includes(q) || summary.includes(q) || tags.some(t => t.includes(q))) {
+        return true;
+      }
+      
+      // Second: OR-match on individual terms (any term match = result)
+      return terms.some(term => 
+        title.includes(term) || 
+        summary.includes(term) || 
+        tags.some(t => t.includes(term))
+      );
+    });
   }, [query, fixes]);
 
   return (
@@ -1544,6 +1699,10 @@ export default function App() {
   const [ocrQuery, setOcrQuery] = useState(''); // Text scanned from camera/upload
   const [showJoinOrg, setShowJoinOrg] = useState(false);
   const [pendingMembers, setPendingMembers] = useState([]);
+  const [qrOrg, setQrOrg] = useState(null); // org to show QR for
+  const [joinScanMode, setJoinScanMode] = useState(false); // QR scan mode in join dialog
+  const qrScannerRef = useRef(null);
+  const qrScannerInstance = useRef(null);
 
   const navigate = (s) => setScreen(s);
 
@@ -2052,6 +2211,7 @@ export default function App() {
           pendingMembers={pendingMembers}
           onApproveMember={handleApproveMember}
           onRejectMember={handleRejectMember}
+          onShowQR={(org) => setQrOrg(org)}
         />
       )}
 
@@ -2114,22 +2274,99 @@ export default function App() {
             <div className="join-header">
               <div className="join-icon"><Icon name="Plus" size={24} /></div>
               <h3>Join Workspace</h3>
-              <p>Enter the workspace ID or slug provided by your company administrator.</p>
+              <p>Enter a workspace ID, scan a QR code, or ask your admin to share one.</p>
             </div>
             
-            <input 
-              className="form-input" 
-              placeholder="e.g. acme-corp or UUID" 
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleJoinOrg(e.target.value);
-              }}
-              autoFocus
-            />
-            
-            <div className="join-actions">
-              <button className="primary-btn" onClick={(e) => handleJoinOrg(e.target.previousSibling.value)}>JOIN WORKSPACE</button>
-              <button className="secondary-btn" onClick={() => setShowJoinOrg(false)}>CANCEL</button>
+            {!joinScanMode ? (
+              <>
+                <input 
+                  className="form-input" 
+                  placeholder="e.g. acme-corp or UUID" 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleJoinOrg(e.target.value);
+                  }}
+                  autoFocus
+                />
+                
+                <div className="join-actions">
+                  <button className="primary-btn" onClick={(e) => {
+                    const input = e.target.closest('.join-card').querySelector('.form-input');
+                    handleJoinOrg(input?.value);
+                  }}>JOIN WORKSPACE</button>
+                  <button className="secondary-btn scan-qr-btn" onClick={() => setJoinScanMode(true)}>
+                    <Icon name="Scan" size={16} sw={2.5} /> SCAN QR CODE
+                  </button>
+                  <button className="secondary-btn" onClick={() => setShowJoinOrg(false)}>CANCEL</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div 
+                  id="qr-reader" 
+                  ref={qrScannerRef} 
+                  className="qr-scanner-container"
+                  style={{ width: '100%', minHeight: '250px', borderRadius: '1rem', overflow: 'hidden', marginBottom: '1rem' }}
+                />
+                <QRScannerEffect 
+                  containerRef={qrScannerRef}
+                  instanceRef={qrScannerInstance}
+                  onDecode={(text) => {
+                    setJoinScanMode(false);
+                    // Try to parse as JSON (our QR format)
+                    try {
+                      const payload = JSON.parse(text);
+                      handleJoinOrg(payload.slug || payload.id || text);
+                    } catch {
+                      handleJoinOrg(text);
+                    }
+                  }}
+                />
+                <div className="join-actions">
+                  <button className="secondary-btn" onClick={() => {
+                    setJoinScanMode(false);
+                    if (qrScannerInstance.current) {
+                      qrScannerInstance.current.stop().catch(() => {});
+                      qrScannerInstance.current = null;
+                    }
+                  }}>BACK TO MANUAL</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Generation Overlay */}
+      {qrOrg && (
+        <div className="join-overlay" onClick={() => setQrOrg(null)}>
+          <div className="fade-in qr-card" onClick={(e) => e.stopPropagation()}>
+            <div className="qr-header">
+              <h3>{qrOrg.name}</h3>
+              <p className="mono" style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Share this QR to invite members</p>
             </div>
+            <div className="qr-code-container">
+              <QRCodeSVG 
+                value={JSON.stringify({ workspace: qrOrg.name, slug: qrOrg.slug, id: qrOrg.id })}
+                size={200}
+                bgColor="#ffffff"
+                fgColor="#0a0e17"
+                level="M"
+                includeMargin={true}
+              />
+            </div>
+            <div className="qr-slug-display">
+              <span className="mono">{qrOrg.slug || qrOrg.id}</span>
+              <button 
+                className="copy-slug-btn" 
+                onClick={() => {
+                  navigator.clipboard.writeText(qrOrg.slug || qrOrg.id);
+                  alert('Copied to clipboard!');
+                }}
+              >
+                <Icon name="Copy" size={14} sw={2} /> Copy
+              </button>
+            </div>
+            <button className="secondary-btn" onClick={() => setQrOrg(null)} style={{ marginTop: '1rem' }}>CLOSE</button>
           </div>
         </div>
       )}

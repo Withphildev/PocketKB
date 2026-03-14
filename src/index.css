@@ -1459,3 +1459,155 @@ input {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(248, 113, 113, 0.15);
 }
+
+/* Role & QR Badges */
+.workspace-badges {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-right: 0.5rem;
+}
+
+.role-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.role-badge.admin {
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--accent);
+}
+
+.role-badge.member {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.active .role-badge.admin {
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--bg-primary);
+}
+
+.active .role-badge.member {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--bg-primary);
+}
+
+.qr-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.qr-badge:hover {
+  background: rgba(0, 229, 255, 0.12);
+  color: var(--accent);
+  transform: scale(1.1);
+}
+
+.active .qr-badge {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--bg-primary);
+}
+
+.active .qr-badge:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* QR Code Generation Overlay */
+.qr-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  padding: 2rem;
+  width: 100%;
+  max-width: 340px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.qr-header h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  font-family: 'Nunito', sans-serif;
+}
+
+.qr-code-container {
+  background: white;
+  border-radius: 1rem;
+  padding: 1rem;
+  display: inline-block;
+  margin: 1.25rem 0;
+  box-shadow: 0 0 30px rgba(0, 229, 255, 0.1);
+}
+
+.qr-slug-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+}
+
+.qr-slug-display .mono {
+  font-size: 0.7rem;
+  color: var(--accent);
+  word-break: break-all;
+}
+
+.copy-slug-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.6rem;
+  background: rgba(0, 229, 255, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.55rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.copy-slug-btn:hover {
+  background: rgba(0, 229, 255, 0.2);
+}
+
+/* Scan QR Button */
+.scan-qr-btn {
+  color: var(--accent) !important;
+  border-color: rgba(0, 229, 255, 0.2) !important;
+}
+
+/* QR Scanner Container */
+.qr-scanner-container {
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.qr-scanner-container video {
+  border-radius: 1rem;
+}
